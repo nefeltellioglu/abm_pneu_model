@@ -1,0 +1,55 @@
+[build-system]
+requires = [
+    "setuptools >= 61",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "model"
+version = "1.0"
+description = "An agent-based model"
+requires-python = ">= 3.9"
+readme = "README.md"
+license = {file = "LICENSE"}
+dependencies = [
+  "h5py ~= 3.6",
+  "numpy ~= 1.24",
+  "tomli ~= 2.0",
+  "matplotlib ~= 3.7",
+  "polars ~= 0.19.0",
+  "tables ~= 3.8",
+  "pandas ~= 2.1",
+  #"pathos-0.3.1",
+  "scipy ~= 1.0",
+  "parq ~= 0.3",
+  "xlsx2csv ~= 0.8",
+]
+
+#https://stackoverflow.com/questions/15966354/how-to-make-setup-py-install-multiple-top-level-packages
+#packages=['package1', 'package2', 'package3'],
+#      package_dir={
+#          'package2': 'package1',
+#          'package3': 'package1',
+#      },
+
+#[tool.setuptools]
+#py-modules = []
+
+[tool.setuptools.packages.find]
+where = ["code/src"]
+
+[project.optional-dependencies]
+tests = [
+  "pytest",
+  "pytest-cov ~= 4.0",
+]
+
+[tool.ruff]
+# Enable pyflakes (F), pycodestyle (E, W), and flake8-bugbear (B).
+select = ["F", "E", "W", "B"]
+line-length = 100
+target-version = "py38"
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
