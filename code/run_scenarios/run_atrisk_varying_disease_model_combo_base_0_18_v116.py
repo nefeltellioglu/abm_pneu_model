@@ -51,9 +51,6 @@ if __name__ == "__main__":
     p['years'] = [0,18]
     p['read_population'] = False
     p['save_population'] = False
-    p['num_runs'] = 100
-    p["transmission_coefficient"] = 0.0545
-    
     p["pop_group"] = "non_indigenous_varying_trans_v116_year_0"
     p["pop_saving_address"] = "non_indigenous_varying_trans_v116_year_18_startfrom2002"
     p['vaccine_list'] =  "vaccine_configs/vaccine_list.dat"

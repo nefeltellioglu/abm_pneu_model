@@ -6,10 +6,7 @@ Created on Fri Aug 25 14:40:02 2023
 @author: ntellioglu
 """
 
-
-#import libraries
 import numpy as np
-#import tables as tb
 from random import Random
 from scipy.stats import lognorm,logistic
 import tables as tb
@@ -17,7 +14,8 @@ import os
 import json
 import polars as pl
 from copy import deepcopy
-from .vaccine import create_vaccine_antibody_df, waning_ratio, roll_v116
+from .antibody_levels import create_vaccine_antibody_df, waning_ratio
+from .vaccine_rollout import roll_v116
 from .disease import Disease
 
 class AtRiskDisease(Disease):
@@ -413,57 +411,19 @@ class AtRiskDisease(Disease):
                  "substract_vacc_time":  ([365] * 83 +
                                           [365 * 6] * 83)
                  })    
-                
-                
-    
+                    
     def check_vaccines(self, t, day, P, t_per_year, rng):
         """
-        Reset vaccine counts and check for successful vaccinations.
+        Vaccinate population
         
-        for v in self.vaccines.values():
-            v.count = 0
-            #v.vaccinate_pop(t, P, self.states, rng)
-            if v.check_vaccination_period(t):
-                v.vaccinate_pop(t, P, self.states, rng) #vaccination is 
-                applied at this time step
-                if v.immediately_effective: #vaccine is immediately effective
-                    #May42021 -added below line to update state of 
-                    individuals-without updating the state counters-.
-                    self.update_ind_states_after_vaccination(t, P)
         """
         cur_year = day // 364 
         cur_day_in_year = day % 364
         period = day / t
-        """#remove adult vaccinations after year 19
-        if cur_year == 18 and cur_day_in_year == 0:
-            vacc_adults = (
-                P.I.filter((pl.col("age")
-                    .is_between(65,101)
-                    
-                    ) & (
-                      pl.col("vaccines").struct.field("no_of_doses") > 1  
-                        ))
-                   .select(["id", "vaccines"])
-            )
-            if vacc_adults.height:             
-                vacc_adults = vacc_adults.with_columns(
-                    vaccines = pl.struct(no_of_doses = pl.lit(0), 
-                                     on_time = pl.lit(0).cast(pl.Int64),
-                            vaccine_type = pl.lit("").cast(pl.Utf8),
-                            final_vaccine_time = \
-                                    pl.Series('final_vaccine_time', 
-                            [None] * vacc_adults.height, dtype = pl.Int32)))
-                    
-                P.I = P.I.update(vacc_adults, on= "id", how="left")"""
         
         for vaccine, value in self.vaccines.items():
-            #vaccine, value = list(self.vaccines.items())[0]
-            #vacc_rollout_year = 0
-            #if day > 364 * 2:
-            #    print("here")
             if (vaccine.endswith(("_entrybirthcohort"))):
                 vaccine = vaccine.replace("_entrybirthcohort", "")
-                #.strip("_entrybirthcohort")
                 
             if (vaccine in ["V116_adult", "atrisk_V116_adult"]) & \
                 (value["years"][0] <= cur_year <= value["years"][1]):
@@ -491,11 +451,8 @@ class AtRiskDisease(Disease):
                                          f"{vacc_prefix}_child"]
                            
                     else:
-                        #vaccine = vaccine.strip("_1").strip("_2")
-                        
                         prev_vaccines = ["atrisk_ppv23_adult", 
                                          "atrisk_ppv23_child"]
-                        
                         
                     vacc_target_group = (
                         P.I.filter((pl.col("age")
@@ -572,12 +529,7 @@ class AtRiskDisease(Disease):
                             (pl.col("vaccines").struct.field("vaccine_type")
                                  != vaccine))
                                          ))
-                    """if not vacc_target_group.height:
-                        on_time_coverage = on_time_coverage * (
-                            vacc_age_group.height / vacc_target_group.height)
-                        late_coverage = late_coverage * (
-                            vacc_age_group.height / vacc_target_group.height)
-                        """
+                    
                     #on time first dose
                     on_time_first_vacc = (vacc_target_group.filter(
                     (pl.col("age_days") == value["daily_schedule"][0]) &
@@ -723,9 +675,7 @@ class AtRiskDisease(Disease):
                                  )
                         .select(["id","age", "age_days", "vaccines", "random"])
                         
-                    )
-               
-                             
+                    )       
                                                               
                     #on time first dose
                     on_time_first_vacc = (vacc_target_group.filter(#on time 
@@ -767,12 +717,6 @@ class AtRiskDisease(Disease):
                         pl.struct(
                         (pl.col("vaccines").struct.field("no_of_doses")),
                         
-                        #pl.Series("on_time",values = -1 * (
-                        #    day + \
-                        #((rng.randint((value["late_vacc_age"] * t_per_year - \
-                        #    value["daily_schedule"][-1] / period), 
-                        # size = late_first_vacc.height) * period))),
-                        #        dtype = pl.Int64),
                         pl.Series("on_time",values = -1 * (
                             day + \
                         (((rng.exponential(16, 
@@ -785,8 +729,7 @@ class AtRiskDisease(Disease):
                         ).alias("vaccines")
                         
                         ))
-                
-                
+
                 #on time following doses
                 on_time_following_vacc = (cont_vacc_target_group.filter(
                     (pl.col("vaccines").struct.field("on_time") == 1) &\
@@ -868,22 +811,7 @@ class AtRiskDisease(Disease):
                             ).alias("vaccines")
                         
                         ))
-                    """
-                        #on time part alternatives
-                        
-                        #(pl.col("vaccines").struct.field("on_time")),
-                        
-                        (-1 * (
-                            day + \
-                                current_daily_schedules.take(
-                    late_vacc["vaccines"].struct.field("no_of_doses") -
-                    len(self.vaccines[prev_vacc]["daily_schedule"]) + 1)
-                          - current_daily_schedules.take(
-                    late_vacc["vaccines"].struct.field("no_of_doses") -
-                        len(self.vaccines[prev_vacc]["daily_schedule"]))
-                                        
-                           )).cast(pl.Int64).alias("on_time"),
-                        """
+                    
                 else:
                     late_vacc = (late_vacc.with_columns(
                         (pl.lit(rng.rand(late_vacc.height))
@@ -905,8 +833,6 @@ class AtRiskDisease(Disease):
                              ).alias("vaccines")
                         
                         ))
-                #print(late_vacc)  
-                
                 #update random column
                 cont_vacc_target_group = cont_vacc_target_group.with_columns(
                      (pl.lit(rng.rand(cont_vacc_target_group.height))
@@ -929,28 +855,7 @@ class AtRiskDisease(Disease):
                            .drop(["no_of_doses",
                                             "on_time", "vaccine_type", 
                                             "final_vaccine_time"]))
-                """
-                updated_target_group = pl.concat([on_time_first_vacc, 
-                                                late_first_vacc,
-                                            on_time_following_vacc,
-                                            late_vacc,
-                                            cont_vacc_target_group])
-                
-                updated_target_group.filter(
-                pl.col("vaccines").struct.field("on_time") < 0)["vaccines"]"""
-                #P.I = P.I.update(updated_target_group, on="id", how="left") 
-                #P.I.filter(pl.col("id") ==rid)["on_time"]
-                #print(P.I["vaccines"].struct.schema)
-                
-                """ (P.I.filter(pl.col("vaccines")
-                        .struct.field("on_time") < 0)["vaccines"])
-                
-                (P.I.update(updated_target_group, on="id", how="left")
-                .filter(pl.col("vaccines")
-                        .struct.field("on_time") < 0)["vaccines"])"""
-        
-      
-    
+             
     def calc_age_group_fois(self):
         #inf_fraction is sorted already
         """
@@ -967,7 +872,6 @@ class AtRiskDisease(Disease):
         
         It's ok to not use polars structure as foi has length of 15
         """
-        #self.transmission_coefficient_multipliers
         i = 0 
         for serotype_group, multiplier in \
             self.transmission_coefficient_multipliers1.items():
@@ -982,13 +886,9 @@ class AtRiskDisease(Disease):
                     
                 i += 1
         
-        #foi =  [self.transmission_coef *\
-        #        sum([x * y for x, y in zip(self.foi["inf_fraction"],row)])\
-        #        for row in self.cmatrix.C]
             
         return pl.Series(name = "prob_infection",
             values = [(1 - np.exp(-cur_foi)) for cur_foi in foi])
-    
     
     def calc_foi(self, day, P, cmatrix, rng): 
          """
@@ -1126,9 +1026,6 @@ class AtRiskDisease(Disease):
                                 "adj_count", "count", "multipliers")
                 )
             
-            
-             """
-             #two alternative way to introduce noise
              self.strain_distribution = (self.strain_distribution
                            .with_columns(
                                (pl.col("fraction") * (1 -
@@ -1137,57 +1034,232 @@ class AtRiskDisease(Disease):
                 ).with_columns(
                     pl.col("fraction") * 1 / pl.col("fraction").sum())
                 ) 
-             
-             self.strain_distribution = (self.strain_distribution
-                          .with_columns(
-                              (pl.col("fraction") * (1 - \
-                            rng.permutation((np.arange(0.001,1, 
-                                    1/self.strain_distribution.height))) * \
-                                   self.noise_in_strain_distribution))
-               ).with_columns(
-                   pl.col("fraction") * 1 / pl.col("fraction").sum())
-               )  
-             """
-             
-             self.strain_distribution = (self.strain_distribution
-                           .with_columns(
-                               (pl.col("fraction") * (1 -
-                        rng.random(size=self.strain_distribution.height) * \
-                            self.noise_in_strain_distribution))
-                ).with_columns(
-                    pl.col("fraction") * 1 / pl.col("fraction").sum())
-                ) 
-            
-             
-                 
-             
+          
              return True#self.foi["prob_infection"], self.strain_distribution
          else:
              return False #no inf individuals in the community
+         
+    def check_recoveries(self, t, day, P, rng):
+        
+        recovered = (
+            P.I.filter((pl.col("endTimes").list.eval(pl.element()
+                            .filter(pl.element() <= day))).list.lengths() > 0)
+            .select(["id", "strain_list", "endTimes", "no_of_strains"])
+        )
+        
+        
+        recovered = (
+                    recovered.with_columns(
+                    (pl.col("endTimes").list.eval(pl.element()
+                             .filter(pl.element() > day))),
+                    (pl.col("strain_list").list.eval(pl.element()).list
+                     .take(pl.col("endTimes").list
+                .eval((pl.element() > day).arg_true()))),
+                   ).with_columns(
+                       (((pl.col("strain_list").list.lengths()))
+                         .cast(pl.Int32).alias("no_of_strains"))))
+                       
+        P.I = P.I.update(recovered, on="id", how="left")
+        return P
+        
+    def check_infection_in_vaccinated_individuals(self, t, day, P, 
+                                         will_infected,possibly_infected, rng):
+        #vacc with ppv23
+        will_infected_ppv23 = possibly_infected.filter(
+                    pl.col("vaccines").struct.field("vaccine_type").is_in(
+                    ["ppsv23_adult", "ppsv23_1", "ppsv23_2", "ppsv23"]))
+            
+        possibly_infected_atrisk_ppv23 = possibly_infected.filter(
+                    pl.col("vaccines").struct.field("vaccine_type").is_in(
+                        ["atrisk_ppv23_adult",
+                         "atrisk_ppv23_child",
+                         "atrisk_ppv23_adult_2","atrisk_ppv23_child_2"]))
+        
+        possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.
+                                join(self.prev_vacc_list,
+            left_on = [pl.col("vaccines").struct.field("vaccine_type"),
+            "age"],right_on = ["vaccine","age"], how= "left"))
+        
+        possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23
+                            .join(self.vaccine_antibody_df, 
+            left_on = ["prev_eff_vaccine",
+            pl.col("vaccines").struct.field("no_of_doses"),
+            pl.col("exposed_strains")],
+            right_on = ["vaccine_type","no_of_doses",
+                        "exposed_strains"],
+            how="left").drop("vaccine_type","no_of_doses") )
+        
+        log_antibodies_atrisk_ppv23 = pl.DataFrame([
+           pl.Series("meanlog" , possibly_infected_atrisk_ppv23["meanlog"]),
+           pl.Series("log_antibodies" ,lognorm.ppf(
+               possibly_infected_atrisk_ppv23["quantile"], 
+                        possibly_infected_atrisk_ppv23["sdlog"], 
+                   loc=possibly_infected_atrisk_ppv23["meanlog"],
+                   scale=1,
+                   )),
+           pl.Series("antibodies" ,
+                lognorm.ppf(possibly_infected_atrisk_ppv23["quantile"], 
+                    np.sqrt(possibly_infected_atrisk_ppv23["sdlog"]), 
+                   loc=0,
+                   scale=np.exp(possibly_infected_atrisk_ppv23["meanlog"]),
+                   )),
+           pl.Series("waning_ratio" ,
+           waning_ratio(
+           possibly_infected_atrisk_ppv23["prev_eff_vaccine"], 
+           day, 
+     (possibly_infected_atrisk_ppv23["vaccines"].struct.field("final_vaccine_time") -
+          possibly_infected_atrisk_ppv23["substract_vacc_time"]),
+         self.waning_halflife_day_adult, self.waning_halflife_day_child,
+         possibly_infected_atrisk_ppv23["age"]))
+           ])
+        log_antibodies_atrisk_ppv23 = log_antibodies_atrisk_ppv23.with_columns(
+           pl.when(pl.col("meanlog") > -9)
+           .then( np.log((pl.col("antibodies") * 
+                 pl.col("waning_ratio"))))
+           .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
+           )["waning_log_antibodies"]
+       
+       
+        prob_of_transmission_atrisk_ppv23 = ( 1 / \
+                       (1 + self.prob_acq_logantibody_scale * \
+                       np.exp( self.prob_acq_logantibody_shape * \
+        (log_antibodies_atrisk_ppv23 - self.prob_acq_logantibody_shift))))   
+        
+        possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23
+                        .drop('prev_eff_vaccine', 'substract_vacc_time'))
+        
+        
+        
+        possibly_infected = possibly_infected.filter(
+                    pl.col("vaccines").struct.field("vaccine_type").is_in(
+                        ["atrisk_ppv23_adult_2","atrisk_ppv23_adult",
+                         "atrisk_ppv23_child_2", "atrisk_ppv23_child",
+                         "ppsv23_adult", "ppsv23_1", 
+                         "ppsv23_2", "ppsv23"]).is_not())
+        
+        #if only vacc with ppv23, then they will be infected regardless
+        will_infected = pl.concat(
+                            [will_infected, will_infected_ppv23],\
+                                  rechunk=True, how = 'diagonal')
+        
+        possibly_infected = possibly_infected.join(
+            self.vaccine_antibody_df, 
+            left_on = [pl.col("vaccines").struct.field("vaccine_type"),
+            pl.col("vaccines").struct.field("no_of_doses"),
+            pl.col("exposed_strains")],
+            right_on = ["vaccine_type","no_of_doses",
+                        "exposed_strains"],
+            how="left").drop("vaccine_type","no_of_doses") 
+        
+        log_antibodies = pl.DataFrame([
+            pl.Series("meanlog" , possibly_infected["meanlog"]),
+            pl.Series("log_antibodies" ,lognorm.ppf(possibly_infected["quantile"], 
+                                     possibly_infected["sdlog"], 
+                    loc=possibly_infected["meanlog"],
+                    scale=1,
+                    )),
+            pl.Series("antibodies" ,lognorm.ppf(possibly_infected["quantile"], 
+                                     np.sqrt(possibly_infected["sdlog"]), 
+                    loc=0,
+                    scale=np.exp(possibly_infected["meanlog"]),
+                    )),
+            pl.Series("waning_ratio" ,
+            waning_ratio(
+            possibly_infected["vaccines"].struct.field("vaccine_type"), 
+            day, 
+          possibly_infected["vaccines"].struct.field("final_vaccine_time"),
+          self.waning_halflife_day_adult, self.waning_halflife_day_child,
+          possibly_infected["age"]))
+            ])
+        
+        log_antibodies = log_antibodies.with_columns(
+            pl.when(pl.col("meanlog") > -9)
+            .then( np.log((pl.col("antibodies") * 
+                  pl.col("waning_ratio"))))
+            .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
+            )["waning_log_antibodies"]
+        
+        
+        prob_of_transmission = ( 1 / \
+                        (1 + self.prob_acq_logantibody_scale * \
+                        np.exp( self.prob_acq_logantibody_shape * \
+                      (log_antibodies - self.prob_acq_logantibody_shift))))  
+        
+        P.vaccinated_acq_pop = (pl.concat([
+            (possibly_infected.with_columns(
+           prob_of_transmission.alias("rel_prob_transmission"),
+           log_antibodies,
+           (pl.col("random") <= prob_of_transmission)
+           .alias("will_infected")
+           ).filter(pl.col("meanlog")> -9)),
+            
+            (possibly_infected_atrisk_ppv23.with_columns(
+           prob_of_transmission_atrisk_ppv23.alias("rel_prob_transmission"),
+           log_antibodies_atrisk_ppv23,
+           (pl.col("random") <= prob_of_transmission_atrisk_ppv23)
+           .alias("will_infected")
+           ).filter(pl.col("meanlog")> -9))
+            ],rechunk=True, how = 'diagonal' )
+            ).unnest("vaccines").select("id", "age","quantile",
+                                    "will_infected",
+                     "final_vaccine_time", "vaccine_type", "no_of_doses",
+                     "rel_prob_transmission", "meanlog", "sdlog",
+                     "waning_log_antibodies", "exposed_strains")
+        will_infected_vacc = (possibly_infected.filter(
+            ((pl.col("random") <= (prob_of_transmission)
+              ).alias("will_infected")),
+            ))
+        will_infected_vacc = will_infected_vacc.with_columns(
+            (pl.lit(rng.rand(will_infected_vacc.height))
+             .alias("random"))).drop("meanlog", "sdlog")
+        
+        will_infected_vacc_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.filter(
+            ((pl.col("random") <= (prob_of_transmission_atrisk_ppv23)
+              ).alias("will_infected")),
+            ))
+        will_infected_vacc_atrisk_ppv23 = will_infected_vacc_atrisk_ppv23.with_columns(
+            (pl.lit(rng.rand(will_infected_vacc_atrisk_ppv23.height))
+             .alias("random"))).drop("meanlog", "sdlog")
+                
+        not_infected = (possibly_infected.filter(
+            ~pl.col("id").is_in(will_infected_vacc["id"])))
+         
+        not_infected = not_infected.with_columns(
+                        (pl.lit(rng.rand(not_infected.height))
+                         .alias("random")))
+        not_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.filter(
+            ~pl.col("id").is_in(will_infected_vacc_atrisk_ppv23["id"])))
+         
+        not_infected_atrisk_ppv23 = not_infected_atrisk_ppv23.with_columns(
+                        (pl.lit(rng.rand(not_infected_atrisk_ppv23.height))
+                         .alias("random")))
+        
+        will_infected = pl.concat([will_infected, will_infected_vacc,
+                                   will_infected_vacc_atrisk_ppv23],\
+                                  rechunk=True, how = 'diagonal')
+        return P, will_infected, possibly_infected, \
+                                    not_infected, not_infected_atrisk_ppv23
     
-    
-    #############  Updating # # # # # # # # # # # #
     def check_exposure(self, t, day, P, rng):
         """
-        TODO: function description
+        Checks exposures
+        Recovers individuals in the infection is over
+        Includes the strain to the individuals' 'strain_list' column if they 
+            are infected recently.
         
+        For vaccinated individuals, it considers individuals antibody levels
         """
         pop_size = P.I.height
-        initial_pop = P.I
         prob_infection = pl.Series("prob_infection", 
                                    [self.foi["prob_infection"]])
             
         #assign strains to individuals to which are going to be exposed
-        P.I = (
-                    P.I.with_columns(
+        P.I = (P.I.with_columns(
                     exposed_strains = self.strain_distribution["strain"][
                         rng.choice(len(self.strain_distribution["strain"]),
                                     p = self.strain_distribution["fraction"],
                                               size = len(P.I))]
              )).sort("random", "no_of_strains", "age_group", descending=False)
-        
-        
-                
         
         #identify individuals that are going to be infected by exposed strains
         P.I = (P.I.with_columns(
@@ -1204,262 +1276,27 @@ class AtRiskDisease(Disease):
                    (pl.lit(rng.rand(P.I.height)).alias("random")),
                    ))
         
-        
-        
-        recovered = (
-            P.I.filter((pl.col("endTimes").list.eval(pl.element()
-                            .filter(pl.element() <= day))).list.lengths() > 0)
-            .select(["id", "strain_list", "endTimes", "no_of_strains"])
-        )
-        
-        #recovered.filter(pl.col("strain_list").list.len() != pl.col("endTimes").list.len())
-       
-        
-        recovered = (
-                    recovered.with_columns(
-                    (pl.col("endTimes").list.eval(pl.element()
-                             .filter(pl.element() > day))),
-                    (pl.col("strain_list").list.eval(pl.element()).list
-                     .take(pl.col("endTimes").list
-                .eval((pl.element() > day).arg_true()))),
-                   ).with_columns(
-                       (((pl.col("strain_list").list.lengths()))
-                         .cast(pl.Int32).alias("no_of_strains"))))
-                       #.filter(pl.col("endTimesIndexes").list.lengths() > 0)
-                    
-        P.I = P.I.update(recovered, on="id", how="left")
-        
-        
-        
-        
-        
-                                
+        P = self.check_recoveries(t, day, P, rng)
                                 
         #add infected strains to "strain_list" and add endTime for them       
         infected = (
             P.I.filter(pl.col("will_infected"))
             .select(["id","age","age_days", "strain_list", "endTimes","random",
                      "no_past_infections", "exp_random","vaccines", "quantile",
-                     "exposed_strains"])
-        )
+                     "exposed_strains"]))
         
-        possibly_infected = infected.filter(
-                        pl.col("vaccines").struct.field("no_of_doses") > 0)
         will_infected = infected.filter(
                         pl.col("vaccines").struct.field("no_of_doses") == 0)
+        possibly_infected = infected.filter(
+                        pl.col("vaccines").struct.field("no_of_doses") > 0)
         
         if possibly_infected.height:
-            
-            #vacc with ppv23
-            will_infected_ppv23 = possibly_infected.filter(
-                        pl.col("vaccines").struct.field("vaccine_type").is_in(
-                        ["ppsv23_adult", "ppsv23_1", "ppsv23_2", "ppsv23"]))
-            #TODO: update here for at_risk
-            
-            
-                
-            possibly_infected_atrisk_ppv23 = possibly_infected.filter(
-                        pl.col("vaccines").struct.field("vaccine_type").is_in(
-                            ["atrisk_ppv23_adult",
-                             "atrisk_ppv23_child",
-                             "atrisk_ppv23_adult_2","atrisk_ppv23_child_2"]))
-            """if (len(possibly_infected_atrisk_ppv23["vaccines"]
-                    .struct.field("vaccine_type").unique()) > 0):
-                print("here")"""
-            possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.
-                                    join(self.prev_vacc_list,
-                left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                "age"],right_on = ["vaccine","age"], how= "left"))
-            
-            possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23
-                                .join(self.vaccine_antibody_df, 
-                left_on = ["prev_eff_vaccine",
-                pl.col("vaccines").struct.field("no_of_doses"),
-                pl.col("exposed_strains")],
-                right_on = ["vaccine_type","no_of_doses",
-                            "exposed_strains"],
-                how="left").drop("vaccine_type","no_of_doses") )
-            
-            log_antibodies_atrisk_ppv23 = pl.DataFrame([
-               pl.Series("meanlog" , possibly_infected_atrisk_ppv23["meanlog"]),
-               pl.Series("log_antibodies" ,lognorm.ppf(
-                   possibly_infected_atrisk_ppv23["quantile"], 
-                            possibly_infected_atrisk_ppv23["sdlog"], 
-                       loc=possibly_infected_atrisk_ppv23["meanlog"],
-                       scale=1,
-                       )),
-               pl.Series("antibodies" ,
-                    lognorm.ppf(possibly_infected_atrisk_ppv23["quantile"], 
-                        np.sqrt(possibly_infected_atrisk_ppv23["sdlog"]), 
-                       loc=0,
-                       scale=np.exp(possibly_infected_atrisk_ppv23["meanlog"]),
-                       )),
-               pl.Series("waning_ratio" ,
-               waning_ratio(
-               possibly_infected_atrisk_ppv23["prev_eff_vaccine"], 
-               day, 
-         (possibly_infected_atrisk_ppv23["vaccines"].struct.field("final_vaccine_time") -
-              possibly_infected_atrisk_ppv23["substract_vacc_time"]),
-             self.waning_halflife_day_adult, self.waning_halflife_day_child,
-             possibly_infected_atrisk_ppv23["age"]))
-               ])
-            #if log_antibodies_atrisk_ppv23.height:
-            #    print("here")
-            log_antibodies_atrisk_ppv23 = log_antibodies_atrisk_ppv23.with_columns(
-               pl.when(pl.col("meanlog") > -9)
-               .then( np.log((pl.col("antibodies") * 
-                     pl.col("waning_ratio"))))
-               .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
-               )["waning_log_antibodies"]
-           
-           
-            prob_of_transmission_atrisk_ppv23 = ( 1 / \
-                           (1 + self.prob_acq_logantibody_scale * \
-                           np.exp( self.prob_acq_logantibody_shape * \
-            (log_antibodies_atrisk_ppv23 - self.prob_acq_logantibody_shift))))   
-            
-            possibly_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23
-                            .drop('prev_eff_vaccine', 'substract_vacc_time'))
-            
-            
-            
-            possibly_infected = possibly_infected.filter(
-                        pl.col("vaccines").struct.field("vaccine_type").is_in(
-                            ["atrisk_ppv23_adult_2","atrisk_ppv23_adult",
-                             "atrisk_ppv23_child_2", "atrisk_ppv23_child",
-                             "ppsv23_adult", "ppsv23_1", 
-                             "ppsv23_2", "ppsv23"]).is_not())
-            
-            #if only vacc with ppv23, then they will be infected regardless
-            will_infected = pl.concat(
-                                [will_infected, will_infected_ppv23],\
-                                      rechunk=True, how = 'diagonal')
-            
-            
-            #if vacc with ppv23 after prev adult vacc doses, 
-            #then they will be infected based on 
-            #the antibody level from prev dose  
-            """possibly_infected_atrisk_ppv23_adult_1 = \
-                (possibly_infected_atrisk_ppv23_adult_1.join(
-                    self.vaccine_antibody_df, 
-                    left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                    pl.col("vaccines").struct.field("no_of_doses"),
-                    pl.col("exposed_strains")],
-                    right_on = ["vaccine_type","no_of_doses",
-                                "exposed_strains"],
-                    how="left").drop("vaccine_type","no_of_doses") )"""
-            #possibly_infected.filter(pl.col("id").is_duplicated())
-
-            
-            
-            
-            possibly_infected = possibly_infected.join(
-                self.vaccine_antibody_df, 
-                left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                pl.col("vaccines").struct.field("no_of_doses"),
-                pl.col("exposed_strains")],
-                right_on = ["vaccine_type","no_of_doses",
-                            "exposed_strains"],
-                how="left").drop("vaccine_type","no_of_doses") 
-            
-            log_antibodies = pl.DataFrame([
-                pl.Series("meanlog" , possibly_infected["meanlog"]),
-                pl.Series("log_antibodies" ,lognorm.ppf(possibly_infected["quantile"], 
-                                         possibly_infected["sdlog"], 
-                        loc=possibly_infected["meanlog"],
-                        scale=1,
-                        )),
-                pl.Series("antibodies" ,lognorm.ppf(possibly_infected["quantile"], 
-                                         np.sqrt(possibly_infected["sdlog"]), 
-                        loc=0,
-                        scale=np.exp(possibly_infected["meanlog"]),
-                        )),
-                pl.Series("waning_ratio" ,
-                waning_ratio(
-                possibly_infected["vaccines"].struct.field("vaccine_type"), 
-                day, 
-              possibly_infected["vaccines"].struct.field("final_vaccine_time"),
-              self.waning_halflife_day_adult, self.waning_halflife_day_child,
-              possibly_infected["age"]))
-                ])
-            
-            log_antibodies = log_antibodies.with_columns(
-                pl.when(pl.col("meanlog") > -9)
-                .then( np.log((pl.col("antibodies") * 
-                      pl.col("waning_ratio"))))
-                .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
-                )["waning_log_antibodies"]
-            
-            
-            prob_of_transmission = ( 1 / \
-                            (1 + self.prob_acq_logantibody_scale * \
-                            np.exp( self.prob_acq_logantibody_shape * \
-                          (log_antibodies - self.prob_acq_logantibody_shift))))  
-            
-            P.vaccinated_acq_pop = (pl.concat([
-                (possibly_infected.with_columns(
-               prob_of_transmission.alias("rel_prob_transmission"),
-               log_antibodies,
-               (pl.col("random") <= prob_of_transmission)
-               .alias("will_infected")
-               ).filter(pl.col("meanlog")> -9)),
-                
-                (possibly_infected_atrisk_ppv23.with_columns(
-               prob_of_transmission_atrisk_ppv23.alias("rel_prob_transmission"),
-               log_antibodies_atrisk_ppv23,
-               (pl.col("random") <= prob_of_transmission_atrisk_ppv23)
-               .alias("will_infected")
-               ).filter(pl.col("meanlog")> -9))
-                ],rechunk=True, how = 'diagonal' )
-                ).unnest("vaccines").select("id", "age","quantile",
-                                        "will_infected",
-                         "final_vaccine_time", "vaccine_type", "no_of_doses",
-                         "rel_prob_transmission", "meanlog", "sdlog",
-                         "waning_log_antibodies", "exposed_strains")
-           
-           
-            will_infected_vacc = (possibly_infected.filter(
-                ((pl.col("random") <= (prob_of_transmission)
-                  ).alias("will_infected")),
-                ))
-            
-                
-            will_infected_vacc = will_infected_vacc.with_columns(
-                (pl.lit(rng.rand(will_infected_vacc.height))
-                 .alias("random"))).drop("meanlog", "sdlog")
-            
-            will_infected_vacc_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.filter(
-                ((pl.col("random") <= (prob_of_transmission_atrisk_ppv23)
-                  ).alias("will_infected")),
-                ))
-            will_infected_vacc_atrisk_ppv23 = will_infected_vacc_atrisk_ppv23.with_columns(
-                (pl.lit(rng.rand(will_infected_vacc_atrisk_ppv23.height))
-                 .alias("random"))).drop("meanlog", "sdlog")
-                    
-            not_infected = (possibly_infected.filter(
-                ~pl.col("id").is_in(will_infected_vacc["id"])))
-             
-            not_infected = not_infected.with_columns(
-                            (pl.lit(rng.rand(not_infected.height))
-                             .alias("random")))
-            not_infected_atrisk_ppv23 = (possibly_infected_atrisk_ppv23.filter(
-                ~pl.col("id").is_in(will_infected_vacc_atrisk_ppv23["id"])))
-             
-            not_infected_atrisk_ppv23 = not_infected_atrisk_ppv23.with_columns(
-                            (pl.lit(rng.rand(not_infected_atrisk_ppv23.height))
-                             .alias("random")))
-            
-            will_infected = pl.concat([will_infected, will_infected_vacc,
-                                       will_infected_vacc_atrisk_ppv23],\
-                                      rechunk=True, how = 'diagonal')
-          
-        
-        
+            P, will_infected, possibly_infected, \
+            not_infected, not_infected_atrisk_ppv23 = (
+                self.check_infection_in_vaccinated_individuals(
+                t, day, P, will_infected,   possibly_infected, rng))
         will_infected = self.generate_duration_of_infection(
                         day, will_infected, rng)
-        
-        #print(will_infected.filter(pl.col("age") == 0)["exp_random"].mean()) 
-        #print(will_infected.filter(pl.col("age") > 18)["exp_random"].mean()) 
         
         will_infected = (will_infected.with_columns(
                     (pl.col("strain_list").list
@@ -1472,23 +1309,14 @@ class AtRiskDisease(Disease):
                       .cast(pl.Int32).alias("no_of_strains")),
                     ))
         
-        if pop_size != P.I.height:
-            print("pop size has changed")
-            
-        will_infected_size = will_infected.height
-        #will_infected = self.check_disease(t, day, P, will_infected, rng)
+        assert pop_size == P.I.height, "pop size has changed"
         
-        if will_infected_size != will_infected.height:
-            print("will_infected size has changed after checking disease")
         if possibly_infected.height and not_infected.height:
-            
             updated_infections = pl.concat([will_infected, not_infected, 
                                             not_infected_atrisk_ppv23],\
                                   rechunk=True, how = 'diagonal')
-           
         else:
             updated_infections = will_infected
-        
         
         P.I = P.I.update(updated_infections, on="id", how="left")
         #check disease
@@ -1496,21 +1324,11 @@ class AtRiskDisease(Disease):
         infected_pop = self.check_disease(t, day, P, infected_pop, rng)
         P.I = P.I.update(infected_pop, on="id", how="left")
         
-        if pop_size != P.I.height:
-            print("pop size has changed after check the disease")
-        
-        #et = time.time()
-        #print(et - st)
-        
-        
-        
+        assert pop_size == P.I.height, "pop size has changed"
         return []
 
     def check_disease(self,t,day, P, infected, rng):
         
-        #cur_disease_pop = infected.sample(3).with_columns(
-        #    pl.Series("disease", ["ipd", "cap", "ipd"])
-        #    )
         initial_inf = infected
         #infected = initial_inf
         initial_len = infected.height
@@ -1524,42 +1342,11 @@ class AtRiskDisease(Disease):
             how="left").drop("vaccine_type","no_of_doses")
         
         
-        
-        
-        """
-            self.vaccine_antibody_df["age"].unique()
-            self.vaccine_antibody_df.with_columns(
-                pl.arange(pl.col("age").list.get(0),
-                          pl.col("age").list.get(1)).list()
-                .over(pl.col("age")).alias("age_list"))
-            
-            
-            pl.arange(self.vaccine_antibody_df["age"].list.get(0),
-                      self.vaccine_antibody_df["age"].list.get(1))
-            .list().over(self.vaccine_antibody_df["age"])
-            
-        """
-       
-        
-            
-        #infected = infected.with_columns((pl.when(pl.col("age") > 64)
-        #                                .then(13 + 4)
-        #                .otherwise(4 + pl.col("age") // 5)).alias("age_coef"))
         infected = infected.join(self.age_0_conversion, on= ["age", "age_days"],
                                    how="left")
-        """infected = infected.join(self.age_0_conversion,
-                        on= ["age", "age_days"],how="left").with_columns(
-                                (pl.when(pl.col("age_coef").is_null())
-                                .then(pl.col("age")+4)
-                                .otherwise("age_coef")).alias("age_coef")
-                                )"""
-                                   
-        
         infected = (infected.update(self.age1_conversion, 
                 on= ["age"], how="left"))
-        
         infected = infected.filter(pl.col("age_coef") >= 0)
-        
         infected = infected.join(self.disease_outcome_multipliers,
                                  left_on = ["age","exposed_strains"],
                                  right_on = ['age', 'strains'])
@@ -1567,7 +1354,6 @@ class AtRiskDisease(Disease):
         #group them based on vaccine received
         infected_novacc = infected.filter(
                     pl.col("vaccines").struct.field("no_of_doses") == 0)
-        
         infected_vacc = infected.filter(
                     pl.col("vaccines").struct.field("no_of_doses") > 0)
         
@@ -1618,7 +1404,6 @@ class AtRiskDisease(Disease):
                         how="left",
                     suffix = "_prev_vacc")
                         .drop("vaccine_type","no_of_doses"))
-        
                 
         infected_vacc_atrisk_ppv23_ipd = (infected_vacc_atrisk_ppv23.filter(
                  pl.col("random") <= (self.ipd_fraction_by_age_group[
@@ -1638,37 +1423,38 @@ class AtRiskDisease(Disease):
                     .alias("random")),)).join(self.prev_vacc_list,
                  left_on = [pl.col("vaccines").struct.field("vaccine_type"),
                         "age"],right_on = ["vaccine","age"], how= "left")
+                                              
         #####  IPD  ######
         log_antibodies_atrisk_ppv23_ipd = pl.DataFrame([
             pl.Series("meanlog" , infected_vacc_atrisk_ppv23_ipd["meanlog"]),
-            pl.Series("log_antibodies" ,lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
-                                     infected_vacc_atrisk_ppv23_ipd["sdlog"], 
-                    loc=infected_vacc_atrisk_ppv23_ipd["meanlog"],
-                    scale=1,
-                    )),
-            pl.Series("antibodies" ,lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
-                                     np.sqrt(infected_vacc_atrisk_ppv23_ipd["sdlog"]), 
+            
+            pl.Series("antibodies" ,
+                      lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
+                        np.sqrt(infected_vacc_atrisk_ppv23_ipd["sdlog"]), 
                     loc=0,
                     scale=np.exp(infected_vacc_atrisk_ppv23_ipd["meanlog"]),
                     )),
                 pl.Series("waning_ratio" ,
                 waning_ratio(
-                infected_vacc_atrisk_ppv23_ipd["vaccines"].struct.field("vaccine_type"), 
-                day, 
-              infected_vacc_atrisk_ppv23_ipd["vaccines"].struct.field("final_vaccine_time"),
-              self.waning_halflife_day_adult, self.waning_halflife_day_child,
-              infected_vacc_atrisk_ppv23_ipd["age"]
+                (infected_vacc_atrisk_ppv23_ipd["vaccines"]
+                 .struct.field("vaccine_type")), 
+                 day, 
+                 (infected_vacc_atrisk_ppv23_ipd["vaccines"]
+                  .struct.field("final_vaccine_time")),
+                  self.waning_halflife_day_adult, 
+                  self.waning_halflife_day_child,
+                  infected_vacc_atrisk_ppv23_ipd["age"]
               )),
-            pl.Series("meanlog_prev" , infected_vacc_atrisk_ppv23_ipd["meanlog_prev_vacc"]),
-            pl.Series("log_antibodies_prev" ,lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
-                                     infected_vacc_atrisk_ppv23_ipd["sdlog_prev_vacc"], 
-                    loc=infected_vacc_atrisk_ppv23_ipd["meanlog_prev_vacc"],
-                    scale=1,
-                    )),
-            pl.Series("antibodies_prev" ,lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
-                                     np.sqrt(infected_vacc_atrisk_ppv23_ipd["sdlog_prev_vacc"]), 
+            pl.Series("meanlog_prev" , 
+                      infected_vacc_atrisk_ppv23_ipd["meanlog_prev_vacc"]),
+            
+            pl.Series("antibodies_prev" ,
+                      lognorm.ppf(infected_vacc_atrisk_ppv23_ipd["quantile"], 
+                      np.sqrt(
+                          infected_vacc_atrisk_ppv23_ipd["sdlog_prev_vacc"]), 
                     loc=0,
-                    scale=np.exp(infected_vacc_atrisk_ppv23_ipd["meanlog_prev_vacc"]),
+                    scale=np.exp(
+                        infected_vacc_atrisk_ppv23_ipd["meanlog_prev_vacc"]),
                     )),
             pl.Series("waning_ratio_prev" ,
                 waning_ratio(
@@ -1683,20 +1469,20 @@ class AtRiskDisease(Disease):
         
         log_antibodies_atrisk_ppv23_ipd = (log_antibodies_atrisk_ppv23_ipd
                                 .with_columns(
-            pl.when(pl.col("meanlog") > -9)
-            .then( np.log((pl.col("antibodies") * 
-                  pl.col("waning_ratio"))))
-            .otherwise(pl.col("meanlog")).alias("waning_log_antibodies"),
-            pl.when(pl.col("meanlog_prev") > -9)
-            .then( np.log((pl.col("antibodies_prev") * 
-                  pl.col("waning_ratio_prev"))))
-            .otherwise(pl.col("meanlog_prev"))
-            .alias("waning_log_antibodies_prev"),
-            ).with_columns(
-                pl.max_horizontal(['waning_log_antibodies',
-                        'waning_log_antibodies_prev'])
-                .alias('waning_log_antibodies')
-                )["waning_log_antibodies"])
+                pl.when(pl.col("meanlog") > -9)
+                .then(np.log((pl.col("antibodies") * 
+                      pl.col("waning_ratio"))))
+                .otherwise(pl.col("meanlog")).alias("waning_log_antibodies"),
+                pl.when(pl.col("meanlog_prev") > -9)
+                .then( np.log((pl.col("antibodies_prev") * 
+                      pl.col("waning_ratio_prev"))))
+                .otherwise(pl.col("meanlog_prev"))
+                .alias("waning_log_antibodies_prev"),
+                ).with_columns(
+                    pl.max_horizontal(['waning_log_antibodies',
+                            'waning_log_antibodies_prev'])
+                    .alias('waning_log_antibodies')
+                    )["waning_log_antibodies"])
                 
         prob_of_disease_atrisk_ppv23_ipd = ( 
            self.prob_dis_logantibody_scale[
@@ -1724,30 +1510,16 @@ class AtRiskDisease(Disease):
         #####  CAP  ######
                                  
         log_antibodies_atrisk_ppv23_cap = pl.DataFrame([
-            #pl.Series("meanlog" , infected_vacc_atrisk_ppv23_cap["meanlog"]),
-            #pl.Series("log_antibodies" ,lognorm.ppf(infected_vacc_atrisk_ppv23_cap["quantile"], 
-            #                         infected_vacc_atrisk_ppv23_cap["sdlog"], 
-            #        loc=infected_vacc_atrisk_ppv23_cap["meanlog"],
-            #        scale=1,
-            #        )),
-            #    pl.Series("waning_ratio" ,
-            #    waning_ratio(
-            #    infected_vacc_atrisk_ppv23_cap["vaccines"].struct.field("vaccine_type"), 
-            #    day, 
-            #  infected_vacc_atrisk_ppv23_cap["vaccines"].struct.field("final_vaccine_time"),
-            #  self.waning_halflife_day_adult, self.waning_halflife_day_child,
-            #  infected_vacc_atrisk_ppv23_cap["age"]
-            #  )),
-            pl.Series("meanlog_prev" , infected_vacc_atrisk_ppv23_cap["meanlog_prev_vacc"]),
-            pl.Series("log_antibodies_prev" ,lognorm.ppf(infected_vacc_atrisk_ppv23_cap["quantile"], 
-                                     infected_vacc_atrisk_ppv23_cap["sdlog_prev_vacc"], 
-                    loc=infected_vacc_atrisk_ppv23_cap["meanlog_prev_vacc"],
-                    scale=1,
-                    )),
-            pl.Series("antibodies_prev" ,lognorm.ppf(infected_vacc_atrisk_ppv23_cap["quantile"], 
-                                     np.sqrt(infected_vacc_atrisk_ppv23_cap["sdlog_prev_vacc"]), 
+            
+            pl.Series("meanlog_prev" , 
+                      infected_vacc_atrisk_ppv23_cap["meanlog_prev_vacc"]),
+           
+            pl.Series("antibodies_prev" ,
+                    lognorm.ppf(infected_vacc_atrisk_ppv23_cap["quantile"], 
+                    np.sqrt(infected_vacc_atrisk_ppv23_cap["sdlog_prev_vacc"]), 
                     loc=0,
-                    scale=np.exp(infected_vacc_atrisk_ppv23_cap["meanlog_prev_vacc"]),
+                    scale=np.exp(
+                        infected_vacc_atrisk_ppv23_cap["meanlog_prev_vacc"]),
                     )),
             pl.Series("waning_ratio_prev" ,
                 waning_ratio(
@@ -1759,20 +1531,15 @@ class AtRiskDisease(Disease):
               self.waning_halflife_day_adult, self.waning_halflife_day_child,
               infected_vacc_atrisk_ppv23_cap["age"]
               )), ])
-        #if log_antibodies_atrisk_ppv23_cap.height and day >= 8015:
-        #    print("here")
+        
         log_antibodies_atrisk_ppv23_cap = (log_antibodies_atrisk_ppv23_cap
                                 .with_columns(
-            #pl.when(pl.col("meanlog") > -9)
-            #.then( (pl.col("log_antibodies") + 9) * \
-            #      (pl.col("waning_ratio")) - 9)
-            #.otherwise(pl.col("meanlog")).alias("waning_log_antibodies"),
             pl.when(pl.col("meanlog_prev") > -9)
             .then( np.log((pl.col("antibodies_prev") * 
                   pl.col("waning_ratio_prev"))))
             .otherwise(pl.col("meanlog_prev"))
             .alias("waning_log_antibodies_prev"),
-            )#.drop("waning_log_antibodies")
+            )
             .rename({
                 "waning_log_antibodies_prev": "waning_log_antibodies"
                 })["waning_log_antibodies"])
@@ -1786,11 +1553,10 @@ class AtRiskDisease(Disease):
                     infected_vacc_atrisk_ppv23_cap["age_coef"]] * \
                     np.exp( self.prob_dis_logantibody_shape * \
                    (log_antibodies_atrisk_ppv23_cap - 
-                    #self.prob_dis_logantibody_shift
+                    
                     -1.7 + 1250 *\
                    self.prob_dis_logantibody_scale[
                        infected_vacc_atrisk_ppv23_cap["age_coef"]]
-                   
                     ))))
         cur_disease_atrisk_ppv23_cap = (infected_vacc_atrisk_ppv23_cap
                 .join(self.at_risk_multipliers, on= ["age", "at_risk"], 
@@ -1799,28 +1565,12 @@ class AtRiskDisease(Disease):
              * pl.col("multiplier")) 
               )))
                                                         
-        
-        
-        """cur_disease_atrisk_ppv23_cap = (cur_disease_atrisk_ppv23_cap.with_columns(
-                            (pl.lit(rng.rand(cur_disease_atrisk_ppv23_cap.height))
-                             .alias("random")),
-                            ).with_columns(
-                     pl.when(pl.col("random") <= (self.ipd_fraction_by_age_group[
-                         cur_disease_atrisk_ppv23_cap["age_coef"]])
-                              )
-                     .then("ipd")
-                     .otherwise("cap").alias("disease") 
-                                 )).filter(pl.col("disease") == "cap")"""
         cur_disease_atrisk_ppv23_cap = (cur_disease_atrisk_ppv23_cap.with_columns(
                             (pl.lit(rng.rand(cur_disease_atrisk_ppv23_cap.height))
                              .alias("random")),
                             ).with_columns(
                      pl.lit("cap").alias("disease") 
                                  ))
-        
-        
-        
-        
         
         ######### rest of the vacc individuals
         infected_vacc = infected_vacc.filter(
@@ -1830,10 +1580,6 @@ class AtRiskDisease(Disease):
                      "atrisk_ppv23_adult","atrisk_ppv23_child",
                      "atrisk_ppv23_adult_2","atrisk_ppv23_child_2"]).is_not())
         
-        
-        
-        
-        
         infected_vacc = pl.concat(
                             [infected_vacc, infected_vacc_ppv23_protected],\
                                   rechunk=True, how = 'diagonal')
@@ -1841,30 +1587,9 @@ class AtRiskDisease(Disease):
                       [infected_novacc, infected_vacc_ppv23_not_protected],\
                                   rechunk=True, how = 'diagonal')
         
-            
-        """if (infected.filter(
-                    pl.col("vaccines").struct.field("vaccine_type") == 
-                    "ppsv23_adult").height > 0):
-            print("here")
-            print(infected.join(self.vaccine_antibody_df, 
-                left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                pl.col("vaccines").struct.field("no_of_doses"),
-                pl.col("exposed_strains")],
-                right_on = ["vaccine_type","no_of_doses", 
-                            "exposed_strains"],
-                how="left").drop("vaccine_type","no_of_doses").filter(
-                        (pl.col("vaccines").struct.field("vaccine_type") == 
-                        "ppsv23_adult") & (pl.col("exposed_strains").
-                is_in(self.vaccines["ppsv23_adult"]["serotypes"]))))"""
-        
         
         log_antibodies_vacc = pl.DataFrame([
             pl.Series("meanlog" , infected_vacc["meanlog"]),
-            pl.Series("log_antibodies" ,lognorm.ppf(infected_vacc["quantile"], 
-                                     infected_vacc["sdlog"], 
-                    loc=infected_vacc["meanlog"],
-                    scale=1,
-                    )),
             pl.Series("antibodies" ,lognorm.ppf(infected_vacc["quantile"], 
                                      np.sqrt(infected_vacc["sdlog"]), 
                     loc=0,
@@ -1887,23 +1612,6 @@ class AtRiskDisease(Disease):
             .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
             )["waning_log_antibodies"]
         
-        
-        #np.mean(lognorm.rvs([1],loc=0, 
-        #scale=np.exp(1), size=1000000, random_state=None))
-        
-        
-        """
-        
-        log_antibodies_vacc = lognorm.ppf(infected_vacc["quantile"] * (
-            waning_ratio(
-            infected_vacc["vaccines"].struct.field("vaccine_type"), 
-            day, 
-          infected_vacc["vaccines"].struct.field("final_vaccine_time"),
-          self.waning_halflife_day_adult,self.waning_halflife_day_child)
-                ),  infected_vacc["sdlog"], 
-                    loc=infected_vacc["meanlog"],
-                    scale=1,
-                    )"""
         log_antibodies_novacc = np.array([-9] * len(infected_novacc))
         
         
@@ -1919,15 +1627,6 @@ class AtRiskDisease(Disease):
                    
                     ))))
         
-        """prob_of_disease_vacc = ( 1 / ( 1 + \
-                self.prob_dis_logantibody_age[infected_vacc["age_coef"]] * \
-                    np.exp( self.prob_dis_logantibody_shape * \
-                   (log_antibodies_vacc - self.prob_dis_logantibody_shift))))"""
-        
-        #if len(prob_of_disease_vacc):
-        #    prob_of_disease_vacc = (prob_of_disease_vacc *
-        #                            (self.prob_dis_logantibody_scale / \
-        #                                     prob_of_disease_vacc.max()))
         
         prob_of_disease_novacc = ( 
          self.prob_dis_logantibody_scale[infected_novacc["age_coef"]] / ( 1 + \
@@ -1938,18 +1637,6 @@ class AtRiskDisease(Disease):
                     -1.7 + 1250 *\
                    self.prob_dis_logantibody_scale[infected_novacc["age_coef"]]
                    ))))
-        """prob_of_disease_novacc = ( 1 / ( 1 + \
-                self.prob_dis_logantibody_age[infected_novacc["age_coef"]] * \
-                    np.exp( self.prob_dis_logantibody_shape * \
-                   (log_antibodies_novacc - self.prob_dis_logantibody_shift))))"""
-        
-        #if len(prob_of_disease_novacc):
-        #    prob_of_disease_novacc = (prob_of_disease_novacc *
-        #                            (self.prob_dis_logantibody_scale / \
-        #                                     prob_of_disease_novacc.max()))
-        
-        
-        
         
            
         cur_disease_pop_vacc = (infected_vacc.join(self.at_risk_multipliers, 
@@ -1958,7 +1645,6 @@ class AtRiskDisease(Disease):
              (prob_of_disease_vacc * pl.col("at_risk_multipliers") *
               pl.col("multiplier")) 
               )))
-        #P.vaccinated_disease_po
         P.vaccinated_disease_pop = ((infected_vacc
                 .join(self.at_risk_multipliers, on= ["age", "at_risk"],
                     how = "left")).with_columns(
@@ -2025,12 +1711,6 @@ class AtRiskDisease(Disease):
                             (pl.lit(rng.rand(cur_disease_novacc_ppv23.height))
                              .alias("random")),
                             ).with_columns(
-                     #pl.when(pl.col("random") <= (self.ipd_fraction_by_age_group[
-                     #    cur_disease_novacc_ppv23["age_coef"]])
-                     #         )
-                     #.then("ipd")
-                     #.otherwise("cap").alias("disease") 
-                     #            )).filter(pl.col("disease") == "cap")
                      pl.lit("cap").alias("disease")
                      ))
         
@@ -2040,19 +1720,6 @@ class AtRiskDisease(Disease):
                                      cur_disease_atrisk_ppv23_ipd,
                                      cur_disease_atrisk_ppv23_cap],
                                     how = 'diagonal')    
-        
-        
-        
-        """cur_disease_pop = (cur_disease_pop.with_columns(
-                        (pl.lit(rng.rand(cur_disease_pop.height))
-                         .alias("random")),
-                        ).with_columns(
-                 pl.when(pl.col("random") <= (self.ipd_fraction_by_age_group[
-                     cur_disease_pop["age_coef"]])
-                          )
-                 .then("ipd")
-                 .otherwise("cap").alias("disease") 
-                             ))"""
         
         P.vaccinated_disease_pop = (P.vaccinated_disease_pop
                                 .join(cur_disease_pop.select("id", "disease"),
@@ -2079,8 +1746,5 @@ class AtRiskDisease(Disease):
         return infected
         
     
-
-        
-        
-        
+       
     

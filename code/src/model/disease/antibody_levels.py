@@ -8,67 +8,11 @@ Created on Sun Oct 22 17:04:26 2023
 import polars as pl
 from scipy.stats import logistic
 import numpy as np
-def create_vaccine_antibody_df_old(vaccines, strains):
-    
-    vaccine_antibody_df = pl.DataFrame()
-    for vaccine, value in vaccines.items():
-        if vaccine.endswith("catchup"):
-            doses = list(range(
-                len(vaccines[value["previous_vacc"]]["daily_schedule"]) + 1, 
-                     len(value["daily_schedule"]) + \
-                len(vaccines[value["previous_vacc"]]["daily_schedule"]) + 1))
-            
-        else:
-            doses =  list(range(0, len(value["daily_schedule"]) + 1))
-           
-        if vaccine.endswith(("ppsv23_2")):
-            continue
-        if vaccine.endswith(("_adult", "ppsv23_1")):
-            age_group = list(range(65, 100))
-            vaccine = vaccine.strip("_adult").strip("_1")
-        else:
-            age_group = list(range(0, 15))
-        cur_vaccine_antibody_df = pl.DataFrame(
-        [pl.Series("vaccine_type",
-                   [vaccine] * len(strains) * \
-                       len(doses) * len(age_group)),
-         pl.Series("no_of_doses", 
-           doses * \
-               len(strains) * len(age_group)
-               ).cast(pl.Int32),
-         pl.Series("exposed_strains", 
-        strains.to_list() * len(doses) * len(age_group)),
-        pl.Series("age", 
-       age_group * len(strains) * len(doses)),
-        # pl.Series("antibodies", [1] * len(strains) * \
-        #           (no_of_doses + 1))
-             
-             ])
-        #print("vaccine %s %s"%(vaccine, cur_vaccine_antibody_df.height))
-        if vaccine_antibody_df.height:
-            vaccine_antibody_df = pl.concat([vaccine_antibody_df, 
-                        cur_vaccine_antibody_df], rechunk = True)
-        else:
-            vaccine_antibody_df = cur_vaccine_antibody_df
-    age_group_non_vacc = list(range(0, 100))
-    non_vacc =  pl.DataFrame(
-            [pl.Series("vaccine_type",
-                       [""] * len(strains) * len(age_group_non_vacc)),
-             pl.Series("no_of_doses", 
-               [0] * \
-                   len(strains) * len(age_group_non_vacc)
-                   ).cast(pl.Int32),
-             pl.Series("exposed_strains", 
-            strains.to_list() * len(age_group_non_vacc)),
-             pl.Series("age", age_group_non_vacc * len(strains)),
-           ])
-    vaccine_antibody_df = pl.concat([vaccine_antibody_df, 
-                non_vacc], rechunk = True)
-    vaccine_antibody_df = add_antibody_levels(vaccine_antibody_df)
-    return vaccine_antibody_df
 
 def create_vaccine_antibody_df(vaccines, strains):
     
+    entrybirthcohort_vacc = None
+    earlycohort_vacc = None
     vaccine_antibody_df = pl.DataFrame()
     for vaccine, value in vaccines.items():
         if vaccine.endswith("catchup"):
@@ -84,6 +28,28 @@ def create_vaccine_antibody_df(vaccines, strains):
             continue
         if vaccine.endswith(("ppsv23_1")):
             vaccine = vaccine.strip("_1")
+        
+        if vaccine.endswith(("_entrybirthcohort")):
+            entrybirthcohort_vacc = vaccine.split("_entrybirthcohort")[0]
+            
+            if (entrybirthcohort_vacc in list(vaccines.keys())):
+                continue
+            else:
+                vaccine = vaccine.split("_entrybirthcohort")[0]
+        if vaccine.endswith(("_earlycohort")):
+            earlycohort_vacc = vaccine.split("_earlycohort")[0]
+            
+            if (earlycohort_vacc in list(vaccines.keys())):
+                continue
+            else:
+                vaccine = vaccine.split("_earlycohort")[0]
+        if vaccine.endswith(("_earlyentrycohort")):
+            earlycohort_vacc = vaccine.split("_earlyentrycohort")[0]
+            
+            if (earlycohort_vacc in list(vaccines.keys())):
+                continue
+            else:
+                vaccine = vaccine.split("_earlyentrycohort")[0]
         
         if vaccine in ["pcv13_31_final_dose", "pcv20_31_final_dose"]:
             vaccine = vaccine.strip("_final_dose")
@@ -108,6 +74,16 @@ def create_vaccine_antibody_df(vaccines, strains):
                         cur_vaccine_antibody_df], rechunk = True)
         else:
             vaccine_antibody_df = cur_vaccine_antibody_df
+    
+    if entrybirthcohort_vacc and not (entrybirthcohort_vacc in 
+                            vaccine_antibody_df["vaccine_type"].unique()):
+        assert False, (f"{entrybirthcohort_vacc} not in vacc list " + \
+                      f"{vaccine_antibody_df['vaccine_type'].unique()}")
+    if earlycohort_vacc and not (earlycohort_vacc in 
+                            vaccine_antibody_df["vaccine_type"].unique()):
+        assert False, (f"{earlycohort_vacc} not in vacc list " + \
+                      f"{vaccine_antibody_df['vaccine_type'].unique()}")
+        
     non_vacc =  pl.DataFrame(
             [pl.Series("vaccine_type", [""] * len(strains) ),
              pl.Series("no_of_doses", [0] * len(strains) ).cast(pl.Int32),
@@ -118,15 +94,38 @@ def create_vaccine_antibody_df(vaccines, strains):
     vaccine_antibody_df = add_antibody_levels(vaccine_antibody_df)
     vaccine_antibody_df = vaccine_antibody_df.unique()
     #vaccine_antibody_df.write_csv("output/vaccine_antibody_df.csv")
+    """
+    vaccine_antibody_df["vaccine_type"].unique().to_list()
+    vdf = vaccine_antibody_df.group_by("vaccine_type", "no_of_doses",
+                                       "meanlog").agg(pl.col("sdlog").first(),
+                                   (pl.col("exposed_strains").explode())
+                            ).filter(pl.col("meanlog") != -9).sort(
+                                "vaccine_type", "no_of_doses", "meanlog").with_columns(
+   pl.format("[{}]",
+      pl.col("exposed_strains").cast(pl.List(str)).list.join(", ")).alias("exposed_strains"))
+                                
+                                
+                              
+    import os
+    vdf.write_csv( os.path.join("/Users/tellioglun/Documents/pneumonia/git_v5/output/imm.csv"))
+    
+    vdf2 = vaccine_antibody_df.filter(pl.col("no_of_doses") == 1).group_by(
+        "vaccine_type", "meanlog").agg(
+        pl.exclude("exposed_strains").first(),
+         (pl.col("exposed_strains").explode())
+         ).filter(pl.col("meanlog") != -9).sort(
+                  "vaccine_type", "no_of_doses", "meanlog").with_columns(
+                      pl.format("[{}]",
+      pl.col("exposed_strains").cast(pl.List(str)).list.join(", ")).alias("exposed_strains"))
+    vdf2.write_csv( os.path.join("/Users/ntelliogluce/Documents/pneumonia/git_v5/output/imm_groups.csv"))
+    """
     return vaccine_antibody_df
 
 def add_antibody_levels(vaccine_antibody_df):
     antibody_distributions = pl.read_csv(
-        "data/antibody_distributions.csv")
- #"/Users/ntellioglu/Documents/pneumonia/git_v5/data/antibody_distributions.csv")
+        "data/immunity/antibody_distributions.csv")
     serotype_groups = pl.read_csv(
-        "data/immune_group_list_20231010.csv")
-  #"/Users/ntellioglu/Documents/pneumonia/git_v5/data/immune_group_list_20231010.csv")
+        "data/immunity/immune_group_list_20231010.csv")
     
     
     schedule_groups = pl.DataFrame([
@@ -197,10 +196,19 @@ def add_antibody_levels(vaccine_antibody_df):
     
     serotype_groups = pl.concat([serotype_groups,
                      pcv1330_groups, pcv1321_groups,pcv13adult_groups], 
-                                rechunk = True)
+                                rechunk = True).drop("age_right")
     serotype_groups2 = add_antibody_levels_pcv15_20()
     serotype_groups = pl.concat([serotype_groups, serotype_groups2], 
                                 how= "diagonal")
+    serotype_groups3 = add_antibody_levels_v116()
+    serotype_groups = pl.concat([serotype_groups, serotype_groups3], 
+                                how= "diagonal")
+    
+    serotype_groups4 = add_antibody_levels_v116_maternal()
+    serotype_groups = pl.concat([serotype_groups, serotype_groups4], 
+                                how= "diagonal")
+    
+    
     serotype_groups = add_antibody_levels_at_risk_groups(serotype_groups)
     serotype_groups = add_antibody_levels_indigenous_base(serotype_groups)
     serotype_groups = add_antibody_levels_indigenous_scenarios(serotype_groups)
@@ -232,8 +240,7 @@ def add_antibody_levels(vaccine_antibody_df):
     curr_vaccines = set(vaccine_antibody_df["vaccine_type"]
                                 .unique().to_list())
     curr_vaccines.remove("")
-    #curr_vaccines.remove("pcv13_31_final_dose")
-    serotype_groups.write_csv("output/serotype_groups.csv")
+    #serotype_groups.write_csv("output/serotype_groups.csv")
     
     are_all_vaccines_included = curr_vaccines.issubset(
                     set(serotype_groups["vaccine_type"].unique().to_list()))
@@ -241,41 +248,10 @@ def add_antibody_levels(vaccine_antibody_df):
         print("Error, check the vaccines in vaccine_antibody_df")
         print(curr_vaccines)
         print(set(serotype_groups["vaccine_type"].unique().to_list()))
-    #vaccine_antibody_df.sort("exposed_strains", "no_of_doses", "vaccine_type")                                             
-    """ serotype_groups.filter(
-        pl.count()
-        .over("serotype" ,"immune_group", "age", 
-              "schedule", "vaccine_type")> 1)
-    vaccine_antibody_df.filter(
-        pl.count()
-        .over("exposed_strains" ,"age", 
-              "no_of_doses", "vaccine_type")> 1)
-    vaccine_antibody_df.filter((pl.col("vaccine_type") == "pcv13_30") &\
-                               (pl.col("meanlog") >  -99) &\
-                            (pl.col("no_of_doses") == 1))
-    (vaccine_antibody_df.filter((pl.col("vaccine_type") == "pcv13_30") &\
-                            (pl.col("meanlog") >  -99))["exposed_strains"]
-     .unique().to_list())
-    vaccine_antibody_df.filter((pl.col("vaccine_type") == "pcv13_30") &\
-                               (pl.col("meanlog") >  -99)).height
-    vaccine_antibody_df.filter((pl.col("vaccine_type") == "pcv13_catchup") &\
-                               (pl.col("meanlog") >  -99))
     
-    vaccine_antibody_df.filter((pl.col("vaccine_type") == "ppsv23") &\
-                               (pl.col("meanlog") >  -99))
-    serotype_groups.filter((pl.col("vaccine_type") == "ppsv23") &\
-                               (pl.col("meanlog") >  -99) &\
-                                (pl.col("schedule") == 1))
-    serotype_groups.filter((pl.col("vaccine_type") == "pcv13_30") &\
-                              (pl.col("meanlog") >  -99))
-    serotype_groups["vaccine_type"].unique()
-    
-    vaccine_antibody_df["vaccine_type"].unique().to_list()"""
     return vaccine_antibody_df
 
 def add_antibody_levels_indigenous_base(serotype_groups):
-    #serotype_groups["vaccine_type"].unique().to_list()
-    #serotype_groups["group"].unique().to_list()
     child_31_last_dose = (serotype_groups.filter(
                         (pl.col("vaccine_type") == "pcv13_21") &
                            (pl.col("schedule") == 3)).with_columns(
@@ -284,8 +260,6 @@ def add_antibody_levels_indigenous_base(serotype_groups):
                             pl.lit("Infant_toddler").alias("group")
                         ))
     
-    #serotype_groups.filter((pl.col("vaccine_type") == "pcv7") &
-    #                       (pl.col("schedule") == 3))                           
     child_ppv23_pcv7_follow = (serotype_groups.filter(
                         (pl.col("vaccine_type") == "atrisk_ppv23_child") &
                            (pl.col("schedule") == 1)).with_columns(
@@ -293,8 +267,6 @@ def add_antibody_levels_indigenous_base(serotype_groups):
                             pl.lit(1).alias("schedule"),
                             pl.lit("Infant_toddler").alias("group")
                         ))
-    #serotype_groups.filter((pl.col("vaccine_type") == "pcv13_30") &
-    #                       (pl.col("schedule") == 3))
     
     child_31_first_3_doses = (serotype_groups.filter(
                             (pl.col("vaccine_type") == "pcv13_30") 
@@ -307,11 +279,9 @@ def add_antibody_levels_indigenous_base(serotype_groups):
                      child_31_last_dose, 
                      child_ppv23_pcv7_follow,
                      ], rechunk = True)
-                               
     return serotype_groups
+
 def add_antibody_levels_indigenous_scenarios(serotype_groups):
-    #serotype_groups["vaccine_type"].unique().to_list()
-    #serotype_groups["group"].unique().to_list()
     child_31_last_dose = (serotype_groups.filter(
                         (pl.col("vaccine_type") == "pcv20_21") &
                            (pl.col("schedule") == 3)).with_columns(
@@ -319,10 +289,6 @@ def add_antibody_levels_indigenous_scenarios(serotype_groups):
                             pl.lit(4).alias("schedule"),
                             pl.lit("Infant_toddler").alias("group")
                         ))
-    
-   
-    #serotype_groups.filter((pl.col("vaccine_type") == "pcv13_30") &
-    #                       (pl.col("schedule") == 3))
     
     child_31_first_3_doses = (serotype_groups.filter(
                             (pl.col("vaccine_type") == "pcv20_21") 
@@ -351,6 +317,27 @@ def add_antibody_levels_indigenous_scenarios(serotype_groups):
                      pl.lit("ppv23_pcv20_adult_follow_2").alias("vaccine_type"),
                      pl.lit("Elderly").alias("group"),
                      )
+    adult_1dose_ppv233_pcv15 = serotype_groups.filter(((pl.col("schedule") == 1) & 
+                (pl.col("vaccine_type") == "ppsv23_adult"))).with_columns(
+                     pl.lit("ppv23_pcv15_adult_follow").alias("vaccine_type"),
+                     pl.lit("Elderly").alias("group"),
+                     )
+    adult_1dose_ppv233_pcv15_2 = serotype_groups.filter(((pl.col("schedule") == 1) & 
+                (pl.col("vaccine_type") == "ppsv23_adult"))).with_columns(
+                     pl.lit("ppv23_pcv15_adult_follow_2").alias("vaccine_type"),
+                     pl.lit("Elderly").alias("group"),
+                     )   
+    adult_1dose_ppv233_v116 = serotype_groups.filter(((pl.col("schedule") == 1) & 
+                (pl.col("vaccine_type") == "ppsv23_adult"))).with_columns(
+                     pl.lit("ppv23_V116_adult_follow").alias("vaccine_type"),
+                     pl.lit("Elderly").alias("group"),
+                     )
+    adult_1dose_ppv233_v116_2 = serotype_groups.filter(((pl.col("schedule") == 1) & 
+                (pl.col("vaccine_type") == "ppsv23_adult"))).with_columns(
+                     pl.lit("ppv23_V116_adult_follow_2").alias("vaccine_type"),
+                     pl.lit("Elderly").alias("group"),
+                     )   
+                    
     ppv23_pcv13_child = serotype_groups.filter(((pl.col("schedule") == 1) & 
                 (pl.col("vaccine_type") == "ppsv23_adult"))).with_columns(
                      pl.lit("ppv23_pcv13_follow").alias("vaccine_type"),
@@ -397,14 +384,13 @@ def add_antibody_levels_indigenous_scenarios(serotype_groups):
                      adult_1dose_ppv233_pcv13, adult_1dose_ppv233_pcv13_2,
                      adult_1dose_ppv233_pcv20, adult_1dose_ppv233_pcv20_2,
                      adult_1dose_pcv20_50,
-                 adult_1dose_ppv233_pcv20_50, adult_1dose_ppv233_pcv20_2_50
+                 adult_1dose_ppv233_pcv20_50, adult_1dose_ppv233_pcv20_2_50,
+                 adult_1dose_ppv233_pcv15, adult_1dose_ppv233_pcv15_2,
+                 adult_1dose_ppv233_v116, adult_1dose_ppv233_v116_2
                      ], rechunk = True)
-    
-    
-                               
     return serotype_groups
+
 def add_antibody_levels_at_risk_groups(serotype_groups):
-    #serotype_groups.columns
     serotype_groups.filter(((pl.col("schedule") == 1) & 
                             (pl.col("vaccine_type") == "pcv13_21") & 
                             pl.col("serotype").is_in(["4", "9V", "14"])) | 
@@ -469,23 +455,26 @@ def add_antibody_levels_at_risk_groups(serotype_groups):
                      pl.lit("atrisk_ppv23_child_2").alias("vaccine_type"),
                      pl.lit("atrisk_child").alias("group"),
                      )
+    adult_1dose_v116 = serotype_groups.filter(((pl.col("schedule") == 1) & 
+                (pl.col("vaccine_type") == "V116_adult"))).with_columns(
+                     pl.lit("atrisk_V116_adult").alias("vaccine_type"),
+                     pl.lit("atrisk_adult").alias("group"),
+                     )
     serotype_groups = pl.concat([serotype_groups,
                      child_1dose_pcv13, adult_1dose_pcv13,
                      child_1dose_pcv15,adult_1dose_pcv15,
                      child_1dose_pcv20, adult_1dose_pcv20,
                      adult_1dose_ppv23, adult_1dose_ppv23_2,
-                     atrisk_ppv23_child, atrisk_ppv23_child_2
+                     atrisk_ppv23_child, atrisk_ppv23_child_2,
+                     adult_1dose_v116
                      ], rechunk = True)
-                         
     return serotype_groups
 
 def add_antibody_levels_pcv15_20():
     antibody_distributions = pl.read_csv(
-    #    "/Users/ntellioglu/Documents/pneumonia/git_v5/data/antibody_distributions_new_vaccines.csv")
-    "data/antibody_distributions_new_vaccines.csv")
+    "data/immunity/antibody_distributions_new_vaccines.csv")
     serotype_groups = pl.read_csv(
-    #    "/Users/ntellioglu/Documents/pneumonia/git_v5/data/immune_group_list_20231027_sen.csv")
-    "data/immune_group_list_20231027_sen.csv")
+    "data/immunity/immune_group_list_20231027_sen.csv")
     antibody_distributions = antibody_distributions.filter(
                             (pl.col("vaccine_type")
                                   .is_in(["PCV20","PCV15","PPV23"])) & \
@@ -504,18 +493,6 @@ def add_antibody_levels_pcv15_20():
                 pl.col("age").fill_null(
                     value = "Infant_toddler")).drop("ratio", 
                                                     "sd_square", "mean")
-    #antibody_distributions.filter(pl.col("Group") == "Low")                                                
-    """antibody_distributions = antibody_distributions.with_columns(
-       (pl.when((pl.col("age") == "Elderly") & \
-               (pl.col("vaccine_type") == "PCV13"))
-       .then("pcv13_adult")
-       .otherwise(pl.col("vaccine_type")).alias("vaccine_type"))) 
-    
-    serotype_groups = serotype_groups.with_columns(
-       (pl.when((pl.col("group") == "Elderly") & \
-               (pl.col("vaccine") == "PCV13"))
-       .then("pcv13_adult")
-       .otherwise(pl.col("vaccine")).alias("vaccine"))) """
     imm_groups = pl.DataFrame([
     pl.Series("immune_group", ["Reference","High-multi","Low-multi","ST3" ]),
         pl.Series("n_immune_group", ["Ref", "High", "Low", "ST3"]),
@@ -561,9 +538,7 @@ def add_antibody_levels_pcv15_20():
         (pl.col("vaccine_type") == "pcv20") & 
         (pl.col("group") == "Infant_toddler"))
                     .with_columns(pl.lit("pcv20_21").alias("vaccine_type")))
-    
-    
-    
+
     serotype_groups = serotype_groups.filter(
         (pl.col("vaccine_type") != "pcv15")).filter(
             (pl.col("vaccine_type") != "pcv20"))
@@ -571,72 +546,138 @@ def add_antibody_levels_pcv15_20():
     serotype_groups = pl.concat([serotype_groups,
                      pcv1530_groups, pcv1521_groups,pcv2030_groups,
                      pcv2021_groups], rechunk = True)
-    """vaccine_antibody_df["vaccine_type"].unique().to_list()
-    vaccine_antibody_df = (vaccine_antibody_df.join(serotype_groups,
-                                left_on=["vaccine_type", "no_of_doses",
-                                         "exposed_strains"],  
-                                right_on=["vaccine_type", 
-                                          "schedule","serotype"],
-                                how= "left").drop("group", 
-                                                 "n_immune_group", "dist")
-                            .with_columns(
-                                pl.col(["meanlog"]).fill_null(-9),
-                                pl.col(["sdlog"]).fill_null(0.000000000001)
-                                
-                                ))"""
+    
     serotype_groups = serotype_groups.drop("Vaccine_naive",
                          "immune_group").rename(
                              {"n_immune_group": "immune_group"})                                        
     
     return serotype_groups
     
+def add_antibody_levels_v116():
+    antibody_distributions = pl.read_csv(
+    "data/immunity/v116_immune_group_parameters.csv")
+    
+    serotype_groups = (antibody_distributions
+                       .drop("Sub", "Total", "Proportion")
+                       .rename({"vaccine": "vaccine_type",
+                                "ln_mu": "meanlog",
+                                "ln_sigma2": "sdlog"}))
+    
+    imm_groups = pl.DataFrame([
+    pl.Series("immune_group", ["Mod","High","Low","ST3" ]),
+        pl.Series("n_immune_group", ["Ref", "High", "Low", "ST3"]),
+        ])
+    serotype_groups = (serotype_groups
+                       .join(imm_groups, on = "immune_group", how="left")
+                       .drop("immune_group")
+                       .rename({"n_immune_group": "immune_group"})
+                       .with_columns(pl.lit(1).alias("schedule"),
+                                   pl.lit("V116_adult").alias("vaccine_type")))
+    return serotype_groups
+
+def add_antibody_levels_v116_maternal():
+    antibody_distributions = pl.read_csv(
+    "data/immunity/v116_immune_group_parameters.csv")
+    
+    serotype_groups = (antibody_distributions
+                       .drop("Sub", "Total", "Proportion")
+                       .rename({"vaccine": "vaccine_type",
+                                "ln_mu": "meanlog",
+                                "ln_sigma2": "sdlog"}))
+    
+    imm_groups = pl.DataFrame([
+    pl.Series("immune_group", ["Mod","High","Low","ST3" ]),
+        pl.Series("n_immune_group", ["Ref", "High", "Low", "ST3"]),
+        ])
+    serotype_groups = (serotype_groups
+                       .join(imm_groups, on = "immune_group", how="left")
+                       .drop("immune_group")
+                       .rename({"n_immune_group": "immune_group"})
+                       .with_columns(pl.lit(1).alias("schedule"),
+                          pl.lit("V116_maternal").alias("vaccine_type")))
+    
+    
+    return serotype_groups
+    
     
 def waning_ratio(vaccine_type, day, final_vaccine_time,
                  waning_halflife_day_adult, waning_halflife_day_child,age):
+    """
     
-    #if len(vaccine_type):
-    #    print("here")
-        #tau = halflife * np.exp(1) / 2 
-        #tmax = 1200
-        #t = np.linspace(0, tmax, 1300)
-        #y = np.exp(-t/tau)
-        
-        #ex
-        #halflife = 125
-        #tau = halflife * np.exp(1) / 2 
-        #t = 7
-        #y = np.exp(-t/tau)
-    if len(vaccine_type) and sum(vaccine_type.str.ends_with("_1")) > 0:    
-        print("here")
+
+    Parameters
+    ----------
+    vaccine_type = possibly_infected["vaccines"].struct.field("vaccine_type")
+    day = day
+    final_vaccine_time = (possibly_infected["vaccines"]
+                          .struct.field("final_vaccine_time"))
+    waning_halflife_day_adult = self.waning_halflife_day_adult
+  
+    waning_halflife_day_child = self.waning_halflife_day_child
+    age = possibly_infected["age"]
     
+
+    """
+       
     halflife = pl.DataFrame([
         vaccine_type,
         final_vaccine_time, age])
+    halflife = halflife.with_columns(
+        
+        pl.when(
+            pl.col("age") >= 18)
+        .then(np.log(0.5)/waning_halflife_day_adult)
+        .otherwise(np.log(0.5)/waning_halflife_day_child).alias("daily_decay")
+        ).with_columns(
+            np.exp(pl.col("daily_decay") * (day - pl.col("final_vaccine_time"))).alias("waning_ratio")
+            )
+            
+    return halflife["waning_ratio"]
+            
+def waning_ratio_extended(vaccine_type, day, final_vaccine_time,
+                 waning_halflife_day_adult, waning_halflife_day_child,
+                 waning_halflife_day_maternal,
+                 age, age_days):
+    """
+    
+
+    Parameters
+    ----------
+    vaccine_type = possibly_infected["vaccines"].struct.field("vaccine_type")
+    day = day
+    final_vaccine_time = possibly_infected["vaccines"].struct.field("final_vaccine_time")
+    waning_halflife_day_adult = self.waning_halflife_day_adult
+  
+    waning_halflife_day_child = self.waning_halflife_day_child
+    waning_halflife_day_maternal = self.waning_halflife_day_maternal
+    age = possibly_infected["age"]
+    age_days = possibly_infected["age_days"]
+    
+
+    """
+
+    
+    halflife = pl.DataFrame([
+        vaccine_type,
+        final_vaccine_time, age, age_days])
     
     halflife = halflife.with_columns(
         pl.when(
-            #(pl.col("vaccine_type").str.ends_with("_1")) |\
-            #(pl.col("vaccine_type").str.ends_with("_2")) |\
-            #(pl.col("vaccine_type").str.ends_with("_adult"))
             pl.col("age") >= 18)
-        .then(waning_halflife_day_adult)
-        .otherwise(waning_halflife_day_child).alias("halflife")
+        .then(np.log(0.5)/waning_halflife_day_adult)
+        .otherwise( 
+                    pl.when((pl.col("age")== 0) & (pl.col("age_days") < 56))
+                    .then(np.log(0.5)/waning_halflife_day_maternal)
+                    .otherwise(np.log(0.5)/waning_halflife_day_child))
+        .alias("daily_decay")
         ).with_columns(
-            np.exp(
-                -(day - pl.col("final_vaccine_time")) /\
-                    (pl.col("halflife")* np.exp(1) / 2 )
-                   ).alias("waning_ratio")
+            np.exp(pl.col("daily_decay") * 
+                   (day - pl.col("final_vaccine_time"))).alias("waning_ratio")
             )
             
-    #return ((day -  final_vaccine_time) < 2*364) * \
-    #            (2*364 - (day -  final_vaccine_time)) / (2*364)
     return halflife["waning_ratio"]
-            
-#def prob_transmission(log_antibodies, random_values, mean, sd):
-        
-#vaccine_antibody_df = create_vaccine_antibody_df(self.vaccines, self.strains)
+                  
 if __name__ == '__main__':
-    import polars as pl
     import sys,os
 
     repo_path = ".."
@@ -644,5 +685,3 @@ if __name__ == '__main__':
     if repo_path not in sys.path:
         sys.path.append(repo_path)
     os.chdir(os.path.join(repo_path))
-
-

@@ -17,7 +17,7 @@ import os
 import json
 import polars as pl
 from copy import deepcopy
-from .vaccine import create_vaccine_antibody_df, waning_ratio
+from .antibody_levels import create_vaccine_antibody_df, waning_ratio
 class Disease(object):
     """
     Disease class that updates disease state of a population.

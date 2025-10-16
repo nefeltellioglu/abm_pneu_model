@@ -38,7 +38,7 @@ if __name__ == "__main__":
     p['pop_prefix'] = p['prefix']
     p['epi_prefix'] = p['prefix']
     p['overwrite'] = True
-    p['years'] = [18,30]
+    p['years'] = [18,19]
     p['read_population'] = True
     p['save_population'] = False
     p['num_runs'] = 100

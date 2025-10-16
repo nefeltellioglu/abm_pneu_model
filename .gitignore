@@ -2,7 +2,7 @@
 *.pyc
 output/.DS_Store
 .DS_Store
-/__pycache__
-.DS_Store
+output/*
+output/**
 **/__pycache__
 */__pycache__
