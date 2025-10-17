@@ -56,7 +56,8 @@ p = {
     
     
     #disease outcome parameters
-    
+    "prob_dis_logantibody_additive": -1.7,
+    "prob_dis_logantibody_adjust": 1250,
     "prob_dis_logantibody_shift": 0,
     "prob_dis_logantibody_shape": 1.5, 
     
@@ -115,6 +116,7 @@ p = {
     'pop_size': 1_000_000,
     'update_demog': True,
     #'demo_burn': 1,
+    'num_runs': 100,
     'random_seed': False,
     'seed': 1234,
     'seed_no': 0,

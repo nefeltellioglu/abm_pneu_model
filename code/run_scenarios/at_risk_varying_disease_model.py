@@ -33,6 +33,7 @@ from model.observers.obs_disease_by_age_by_product_at_risk import \
 
 from model.disease.contact_matrix import KnownContactMatrix
 from model.disease.at_risk_varying_run import go_single
+from model.disease.at_risk_varying_disease_simulation import AtRiskDisSimulation
 
 
 import pandas as pd
@@ -100,5 +101,5 @@ knowncmatrix = pd.read_csv(
 def new_go_single(parameters):
     go_single(parameters, DiseaseModel, 
               KnownContactMatrix(givenmatrix = knowncmatrix),
-              parameters['seed'] )
+              parameters['seed'], sim_type=AtRiskDisSimulation)
 

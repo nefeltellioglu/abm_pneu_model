@@ -48,20 +48,16 @@ if __name__ == "__main__":
     p['pop_prefix'] = p['prefix']
     p['epi_prefix'] = p['prefix']
     p['overwrite'] = True
-    p['years'] = [0,18]
+    p['years'] = [0,1]
     p['read_population'] = False
-    p['save_population'] = False
+    p['save_population'] = True
     p["pop_group"] = "non_indigenous_varying_trans_v116_year_0"
     p["pop_saving_address"] = "non_indigenous_varying_trans_v116_year_18_startfrom2002"
     p['vaccine_list'] =  "vaccine_configs/vaccine_list.dat"
     
     p1 = p.copy()
-    # (basic usage) run simulation
     # sweep parameters
-    sweep_params = [
-        {'name': 'save_population', 'values': ["False"]},
-        ]
-    # number of different seeds to use for each parameter combination
+    sweep_params = [{'name': 'save_population', 'values': ["True"]},]
     
     # generate parameter combinations (converting iterator to list)
     param_combos = list(ParamComboIt(p, sweep_params))
@@ -71,14 +67,8 @@ if __name__ == "__main__":
     for i,x in enumerate(param_combos):
         print(x['prefix'], x['seed'])
         x["seed_no"] = i
-        #x['save_population'] = False
-        if i == 0:
-            x['save_population'] = False
-        else:
-            x['save_population'] = False
         all_combos.append(x)
 
-    
     job_inputs = [(i,) for i in all_combos]
     
     #run a single simulation among combinations

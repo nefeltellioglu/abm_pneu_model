@@ -50,10 +50,7 @@ class AtRiskDisSimulation(DisSimulation):
         create_pop = True
         if create_pop:
             self.create_population()
-            
-    
-        
-         
+     
     ###############
     #initialization
     def create_population(self):
@@ -115,60 +112,51 @@ class AtRiskDisSimulation(DisSimulation):
                                       pop=self.P, cases=[],introduction=False,
                                       day = int(year_begin * 364),
                                       new_I=[], rng=self.rng)
-        self.plot_dur_infections()
+        #self.plot_dur_infections()
         for t in range(t_begin + 1, t_end + 1):
             
             day = t * 364 // self.p['t_per_year']
             # update demography (if required)
             if self.p['update_demog']:  # and t%52==0:
                 births, deaths, imms = self.update_all_demo(t, day)  
-                
-            #print(self.P.I.select(["age", "age_days", "age_group"]))
-           # print(self.P.I.select(["age", "infections"]))
-            #print(self.P.I.sort("id").head)
-            
+             
             # update disease
             if self.disease.update(t, day, self.P, self.p["t_per_year"], self.rng):
                 if verbose:
                     self.print_pop_numbers(t)
-                #break  # update returns true if halting upon fade out
-
-            #if verbose:
-            #    self.print_pop_numbers(t)
-            
+             
         if verbose:
             self.print_column_labels()
             self.end_time = time.time()
             print("time:", self.end_time - self.start_time)
             
         if self.p["save_population"]:
-            output_fname = os.path.join(self.p['resource_prefix'], 
-                                            "disease_pop_data", 
-                                        "%s"%self.p["pop_saving_address"])
-            self.P.I = self.P.I.unnest("vaccines")
-            self.P.I = self.P.I.with_columns(
-                pl.concat_list("id","strain_list" ).alias("n_strain_list"),
-                pl.concat_list("id","endTimes" ).alias("n_endTimes"))
+            self.save_population()
             
-            with open('%s_strain_list.csv'%output_fname, 
-                      'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(["id", "st11", "st2"])
-                writer.writerows((self.P.I["n_strain_list"]).to_list())
-            with open('%s_endTimes.csv'%output_fname, 
-                      'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(["id", "endt1", "endt2"])
-                writer.writerows(self.P.I["n_endTimes"].to_list())
-            (self.P.I.drop("strain_list", "endTimes", 
-                           "n_strain_list", "n_endTimes")
-            .write_csv(os.path.join(self.p['resource_prefix'], 
-                                            "disease_pop_data", 
-                                     "%s.csv"%self.p["pop_saving_address"])))
-            """from csv import reader as csvreader
-            with open('%s_endTimes.csv'%output_fname, 'r') as fp:
-                reader = csvreader(fp)
-                li = list(reader)"""
+    def save_population(self):
+        output_fname = os.path.join(self.p['resource_prefix'], 
+                                        "saved_checkpoints", 
+                                    "%s"%self.p["pop_saving_address"])
+        self.P.I = self.P.I.unnest("vaccines")
+        self.P.I = self.P.I.with_columns(
+            pl.concat_list("id","strain_list" ).alias("n_strain_list"),
+            pl.concat_list("id","endTimes" ).alias("n_endTimes"))
+        
+        with open('%s_strain_list.csv'%output_fname, 
+                  'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["id", "st11", "st2"])
+            writer.writerows((self.P.I["n_strain_list"]).to_list())
+        with open('%s_endTimes.csv'%output_fname, 
+                  'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["id", "endt1", "endt2"])
+            writer.writerows(self.P.I["n_endTimes"].to_list())
+        (self.P.I.drop("strain_list", "endTimes", 
+                       "n_strain_list", "n_endTimes")
+        .write_csv(os.path.join(self.p['resource_prefix'], 
+                                        "saved_checkpoints", 
+                                 "%s.csv"%self.p["pop_saving_address"])))
             
     def run(self, verbose):
         """
@@ -189,8 +177,6 @@ class AtRiskDisSimulation(DisSimulation):
         # switch observers off, burn in and save population
         self.disease.obs_on = observers
         self._main_loop(start_year, years, verbose)
-        
-            
             
     def update_all_demo(self, t, day):
         """
@@ -201,40 +187,29 @@ class AtRiskDisSimulation(DisSimulation):
         :returns: a tuple containing lists of births, deaths
 
         """
-        
         deaths = 0
-        
-        
         #period: number of dates that each ind aged since the last tick
         period = 364 // self.p['t_per_year']
-        
         cur_year = day // 364
-        
         death_rates = pl.Series("death_rates", 
                     [np.array([i[0] for i in 
                                self.death_rates[cur_year].values()])])
-        
-        self.disease.at_risk_changing_ages
+        #self.disease.at_risk_changing_ages
         self.P.I = (
                self.P.I
                .with_columns(
                    
                (pl.col('age').add((pl.col('age_days') + period) // 364)
                .alias('age')),
-               
                ((pl.col('age_days') + period) % 364).alias('age_days'),
-               
-               (
-                   pl.when(pl.col('age_group')  >= 15)
+               (pl.when(pl.col('age_group')  >= 15)
                     .then(15)
                     .otherwise((pl.col('age') + \
                             (pl.col('age_days') + period) // 364) // 5)
                         .alias('age_group')
                 ),
-        
               ((pl.col('random') < death_rates.list.take(self.P.I["age"])[0])
                .alias("alive")),
-              
               (pl.lit(self.rng.rand(self.P.I.height))).alias("random"),
                ).filter(pl.col("alive")).drop("alive")
                )
@@ -249,49 +224,6 @@ class AtRiskDisSimulation(DisSimulation):
         
         self.P.I = (self.P.I.update(at_risk_changing_inds, 
                 on= ["id"], how="left"))
-        
-        
-        """
-        #checks1
-        at_risk_changing_inds1.filter((pl.col("age") == 70) &
-                                     (pl.col("at_risk") > 0))
-        self.disease.at_risk_changing_ages
-        age = 50
-        tier = 1
-        (at_risk_changing_inds.filter((pl.col("age") == age) &
-                               (pl.col("at_risk") == tier)).height)/ (
-             at_risk_changing_inds.filter((pl.col("age") == age)).height                            
-                                         )
-        (at_risk_changing_inds1.filter((pl.col("age") == age) &
-                              (pl.col("at_risk") == tier)).height)/ (
-             at_risk_changing_inds1.filter((pl.col("age") == age)).height                            
-                                         )
-                                  
-         #checks2 for updating all pop data
-         self.P.I.filter((pl.col("age") == 70) & (pl.col("age_days") == 0) &
-                                      (pl.col("at_risk") > 0))
-         
-         #self.P.I.height 
-         self.P.I = (self.P.I.update(at_risk_changing_inds, 
-                 on= ["id"], how="left"))
-         
-         #check3 long run update
-         self.P.I.filter((pl.col("age") >= 70) & (pl.col("at_risk") > 0))
-         self.P.I.filter((pl.col("age") < 5) & (pl.col("at_risk") > 0))
-         self.P.I.filter((pl.col("age") >= 5) & (pl.col("age") < 15) &
-                         (pl.col("at_risk") == 1)).height / (
-              self.P.I.filter((pl.col("age") >= 5) & (pl.col("age") < 15)
-                              ).height )
-         self.P.I.filter((pl.col("age") >= 50) & (pl.col("age") < 70) &
-                         (pl.col("at_risk") == 1)).height / (
-              self.P.I.filter((pl.col("age") >= 50) & (pl.col("age") < 70)
-                              ).height )
-                                  
-        """
-            
-            
-            
-        
                 
         #BIRTHS + population growth
         ####################
@@ -303,10 +235,8 @@ class AtRiskDisSimulation(DisSimulation):
         # grab any new 'whole' individuals
         new_residue = int(self.growth_residue)
         new_now += new_residue
-        self.growth_residue -= new_residue
-
-            
-       
+        self.growth_residue -= new_residue     
+     
         # immigration
         ##############
         imm_tgt = int(len(self.P.I) * self.mig_rates[t])
@@ -315,7 +245,6 @@ class AtRiskDisSimulation(DisSimulation):
         self.P.introduce_births_and_migrations(self.disease, day, 
                                 self.p['t_per_year'], new_now, imm_tgt, 
                                                self.age_dist_mig,self.rng)
-        
         return new_now, deaths, imm_tgt
     
     # OUTPUT AND HELPER FUNCTIONS ###########################################
@@ -331,7 +260,6 @@ class AtRiskDisSimulation(DisSimulation):
                        for x in
                        (['t', 't(y)', 't(d)'] )]))
     
-   
     def print_pop_numbers(self, t):
         #TODO: print_pop_numbers needs to be updated
         #print(''.join(['%7d' % x

@@ -32,11 +32,11 @@ class AtRiskDisPopulation(DisPopulation):
                               ages, age_days, rng, 
                               ismigrated = False, isUpload = False):
         if isUpload:
-            pop = 'data/disease_pop_data/%s.csv'%disease.pop_group
+            pop = 'data/saved_checkpoints/%s.csv'%disease.pop_group
             endTimes = \
-                'data/disease_pop_data/%s_endTimes.csv'%disease.pop_group
+                'data/saved_checkpoints/%s_endTimes.csv'%disease.pop_group
             stran_list = \
-                'data/disease_pop_data/%s_strain_list.csv'%disease.pop_group
+                'data/saved_checkpoints/%s_strain_list.csv'%disease.pop_group
             
             pop = pl.read_csv(pop)
             endTimes = pl.read_csv(endTimes)

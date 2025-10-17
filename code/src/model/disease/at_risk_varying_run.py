@@ -10,12 +10,10 @@ import os
 
 #from random import Random
 import numpy as np
-from .at_risk_varying_disease_simulation import AtRiskDisSimulation
 from ..population.utils import create_path
 import tables as tb
-from ..observers.obs_pop import PopulationObserver
 
-def go_single(p, disease_type, cmatrix, cur_seed, sim_type=AtRiskDisSimulation, 
+def go_single(p, disease_type, cmatrix, cur_seed, sim_type,
                           verbose=False):
     """
     Run a single simulation (or load if previously run).
@@ -35,27 +33,27 @@ def go_single(p, disease_type, cmatrix, cur_seed, sim_type=AtRiskDisSimulation,
     """
 
     create_path(p['prefix'])
-    
     rng = np.random.RandomState(cur_seed)
-    
     start_year = 0 #p['burn_in'] + p['epi_burn_in']
     year_list = [(start_year + x, start_year + y) for x, y in zip(p['years'][:-1], p['years'][1:])]
 
     disease_fname = os.path.join(p['prefix'], 'disease_%s_%s.hd5' % (year_list[-1]))
 
-    # a check to remove invalid files; NB: will not remove files from partial/incomplete runs (use x for that)
+    # a check to remove invalid files; NB: will not remove files from partial/incomplete runs
+    # (use x for that)
     if os.path.isfile(disease_fname) and not tb.is_pytables_file(disease_fname):
         os.remove(disease_fname)
-        
+
     # load disease if output file already exists, otherwise run simulation
     if os.path.isfile(disease_fname) and not p['overwrite']:
         print("@@_go_single: loading existing disease (%sseed=%d)..." % (
             disease_type,  cur_seed))
-        print("NB: to overwrite existing disease output, rerun with 'x' switch (eg, 'python main.py s x')")
+        print("NB: to overwrite existing disease output, rerun with 'x' switch",
+                "(eg, 'python main.py s x')")
         disease = None
         try:
             disease = disease_type(p, cmatrix, rng, disease_fname, mode='r')
-            
+
         except tb.exceptions.NoSuchNodeError:
             # this is thrown when requested observers don't exist in disease file...
             if disease:
@@ -74,12 +72,10 @@ def go_single(p, disease_type, cmatrix, cur_seed, sim_type=AtRiskDisSimulation,
     disease = disease_type(p, cmatrix, rng, disease_fname, mode='w')
     sim = sim_type(p, disease, rng)
     #sim.add_observers(PopulationObserver(sim.h5file))
-    
+
     if 'fake' not in p:
         sim.run(verbose)
         if (verbose):
             print("\t... simulation DONE! (seed=%d)..." % (cur_seed))
         disease.done(True)
         #sim.done(complete=True)
-        
-        

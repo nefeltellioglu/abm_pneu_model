@@ -38,14 +38,9 @@ class AtRiskDisPopulation(DisPopulation):
                 'data/saved_checkpoints/%s_endTimes.csv'%disease.pop_group
             stran_list = \
                 'data/saved_checkpoints/%s_strain_list.csv'%disease.pop_group
-            
-            
             pop = pl.read_csv(pop)
             endTimes = pl.read_csv(endTimes)
             strain_list = pl.read_csv(stran_list)
-            
-            
-            
             
             endTimes = endTimes.with_columns(
                 pl.col("id").cast(pl.Int64),
@@ -63,9 +58,7 @@ class AtRiskDisPopulation(DisPopulation):
                     (pl.col("strain_list").list.eval(pl.element()
                             .filter(pl.element().is_not_null())))
                     ).drop("st11", "st2")
-            
-            
-    
+
             pop = pop.with_columns(
                 pl.struct(pl.col("no_of_doses").cast(pl.Int32),
                           pl.col("on_time"),
@@ -78,11 +71,7 @@ class AtRiskDisPopulation(DisPopulation):
                 #strain_list["strain_list"]
                 ).drop("no_of_doses",
                          "on_time","vaccine_type", "final_vaccine_time")
-                       
-            
-                
-                       
-                       
+                                   
             pop = pop.join(strain_list, on="id", how="left")
             
             self.I = pop.join(endTimes, on="id", how="left")
@@ -97,13 +86,6 @@ class AtRiskDisPopulation(DisPopulation):
                    .select(["id", "vaccines"])
             )
             if vacc_adults.height:             
-                """vacc_adults = vacc_adults.with_columns(
-                    vaccines = pl.struct(no_of_doses = pl.lit(0), 
-                                     on_time = pl.lit(0).cast(pl.Int64),
-                            vaccine_type = pl.lit("").cast(pl.Utf8),
-                            final_vaccine_time = \
-                                    pl.Series('final_vaccine_time', 
-                        [None] * vacc_adults.height, dtype = pl.Int32)))"""
                 no_vaccine =  pl.struct(no_of_doses = pl.lit(0), 
                                  on_time = pl.lit(0).cast(pl.Int64),
                         vaccine_type = pl.lit("").cast(pl.Utf8),
@@ -115,8 +97,7 @@ class AtRiskDisPopulation(DisPopulation):
                     .then(no_vaccine)
                     .otherwise(pl.col("vaccines")).alias("vaccines")
                     )
-                
-                
+
             self.next_id = pop["id"].max() + 1
             
         else:
@@ -125,7 +106,6 @@ class AtRiskDisPopulation(DisPopulation):
                                       self.next_id+ no_inds)), dtype=pl.Int64),
                     pl.Series("age", ages, dtype=pl.Int64),
                     pl.Series("age_days", age_days, dtype=pl.Int64),
-                    #pl.Series("age_group", ages, dtype=pl.Int64),
                 ]).with_columns( 
                     age_group = (pl.when(pl.col("age")>79)
                                  .then(15)
@@ -153,7 +133,6 @@ class AtRiskDisPopulation(DisPopulation):
         self.disease_pop = pl.DataFrame([])
         self.vaccinated_disease_pop = pl.DataFrame([])
         self.vaccinated_acq_pop = pl.DataFrame([])
-        
         #add at_risk column
         self.I = add_at_risk_column(self.I, disease, rng, ismigrated)
         
@@ -187,8 +166,7 @@ class AtRiskDisPopulation(DisPopulation):
                                       self.next_id+ no_inds)), dtype=pl.Int64),
                     pl.Series("age", ages, dtype=pl.Int64),
                     pl.Series("age_days", age_days, dtype=pl.Int64),
-                    #pl.Series("age_group", ages, dtype=pl.Int64),
-                ]).with_columns( 
+                    ]).with_columns( 
                     age_group = (pl.when(pl.col("age")>79)
                                  .then(15)
                                  .otherwise(pl.col("age") // 5)),
@@ -215,17 +193,6 @@ class AtRiskDisPopulation(DisPopulation):
             #TODO: find another way to select individuals with given ages
             #given age list, ie [30,45,3,5,30], select individuals with
             #same ages
-            """ages = pl.DataFrame(pl.Series("age", ages))
-            migrants = pl.DataFrame({'age': ages}).group_by("age")
-            .agg(pl.count().alias('migrant_count')).sort("age")
-            #migrants.join(self.I, on='age', how='left').group_by("age")
-            chosen = migrants.join(self.I.select('age', 'id'), 
-                                   on='age', how='left').group_by('age')
-            .agg(pl.all().shuffle().head(pl.col('migrant_count').first()))
-            .explode(pl.exclude('age')).drop('migrant_count')
-            chosen = chosen.join(self.I, on=['age', 'id'])
-            # TODO: choose new IDs and add to the end of self.I
-            """
           
             migrants = (pl.DataFrame({'age': ages}).group_by("age")
                         .agg(pl.count().alias('migrant_count')).sort("age"))
@@ -247,10 +214,8 @@ class AtRiskDisPopulation(DisPopulation):
                            disease.duration_of_infection, no_inds))
                         )
               
-             
         #add at_risk column
         chosen = add_at_risk_column(chosen, disease, rng, ismigrated)
-        
         
         self.I = pl.concat([self.I, chosen], rechunk=True,\
                                how = 'diagonal')
