@@ -5,16 +5,15 @@ Created on Tue Sep  5 15:30:25 2023
 @author: ntellioglu
 """
 
-
-if __name__ == "__main__":   
+if __name__ == "__main__":
     import sys,os, time
     import json
     import model
 
     #print(os.getcwd())
-    repo_path = "../.."
-    code_path = os.path.join(repo_path, "code")
-    code_path = os.path.abspath(os.path.join(repo_path, "code"))
+    repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+    code_path = os.path.join(repo_path, "code/src")
+    code_path = os.path.abspath(os.path.join(repo_path, "code/src"))
 
     if code_path not in sys.path:
         sys.path.append(code_path)

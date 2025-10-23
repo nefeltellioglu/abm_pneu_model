@@ -26,9 +26,24 @@ from ..population.simulation import Simulation, _adjust_prob
 
 class DisSimulation(Simulation):
     """
-    Basic demographic simulation object.
+    Simulation class that simulates disease and demographical dynamics 
+    at every step.
 
-    Handles updating of births, deaths, aging, immigration
+    The demographical updates include births, deaths, aging, immigration.
+    It makes the demographical and disease related updates in 
+    DisPopulation class object.
+    
+    In _main_loop(), it updated demography (if True) and disease transmission
+    and save the population (if True) when the simulation ends. 
+    
+    Currently population is saved in three different csv files due to the 
+    nested struct columns of list of strains (_strain_list.csv) and 
+    corresponding time until clearance (_endList.csv) and the rest of the 
+    columns. This saving section can be later updated by using write_parquet
+    function of polars library which can write nested columns into the same
+    file. The only downside would be that the saved parquet files cannot be 
+    opened by excel for an easy review of the dataset.
+    
 
     :param p: dictionary of simulation parameters.
     :type p: dict
@@ -39,7 +54,7 @@ class DisSimulation(Simulation):
     """
     def __init__(self, p, disease, rng):
         super(DisSimulation, self).__init__(p, 
-                            h5file=disease.h5file, create_pop=False)
+                            h5file=disease.h5file, create_pop=True)
             
         self.disease = disease
         self.rng = rng

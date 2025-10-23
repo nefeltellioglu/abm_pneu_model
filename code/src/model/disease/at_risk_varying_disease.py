@@ -22,10 +22,16 @@ class AtRiskDisease(Disease):
     """
     Disease class that updates disease state of a population.
     
-    An agent-based model that simulated multi-strain pathogen transmission.
+    It simulates a multi-strain pathogen transmission in a population with age
+    structure.
     
-    :param 
-    
+    :param:
+        p: parameter dictionary
+        cmatrix: Contact Matrix
+        rng: RandomNumber Generator
+        fname: FileName to save the collected statistics.
+        mode: "w" is used as the base mode which writes parameters to the 
+        collected statistics hd5 file.
     """
     def __init__(self, p, cmatrix,rng, fname, mode):
         super(AtRiskDisease, self).__init__(p, cmatrix,rng, fname, mode)

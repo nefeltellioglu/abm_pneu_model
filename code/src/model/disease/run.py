@@ -19,7 +19,10 @@ def go_single(p, disease_type, cmatrix, cur_seed, sim_type=DisSimulation,
                           verbose=False):
     """
     Run a single simulation (or load if previously run).
-
+    
+    It takes a parameter dictionary, disease class, contact matrix, a random
+    seed, a simulation type and then runs a single simulation.
+    
     :param p: The simulation parameters
     :type p: dict
     :param disease_type: The disease model to simulate.
