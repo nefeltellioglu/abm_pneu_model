@@ -18,6 +18,10 @@ class AtRiskDisPopulation(DisPopulation):
     The population class for a population containing pl.dataFrame where
     each row represent an individual.
     
+    AtRiskDisPopulation is a child class of DisPopulation class. 
+    It extend the population structure and includes an at_risk column to
+    assign at_risk flag to individuals as 0 (not-at-risk), 1 (Tier 1 at-risk),
+    and 2 (Tier 2 at-risk).
     
     :class:`.population.Population` adds disease and vaccination rows 
     to individuals pl.dataFrame.

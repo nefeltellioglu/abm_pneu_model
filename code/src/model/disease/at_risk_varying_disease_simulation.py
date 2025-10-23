@@ -29,9 +29,10 @@ from ..population.simulation import Simulation, _adjust_prob
 
 class AtRiskDisSimulation(DisSimulation):
     """
-    Basic demographic simulation object.
-
-    Handles updating of births, deaths, aging, immigration
+    The same as the parent DisSimulation class. The only difference
+    is that it takes AtRiskDisPopulation as an input population class rather 
+    than DisPopulation population class which includes atrisk column for 
+    individuals.
 
     :param p: dictionary of simulation parameters.
     :type p: dict
