@@ -517,36 +517,18 @@ class Disease(object):
         Update the disease state of the population.
         """
         self.check_vaccines(t, day, P, t_per_year, rng)
-        # print "(update)", introduction
-        
-        
-        
         #calculate foi
         is_population_infected = self.calc_foi(day, P, self.cmatrix, rng)
         if is_population_infected:
             #at least one inf individual in the community
             cases = self.check_exposure(t, day, P, rng)
-            
         introductions = self.external_exposure(t, day, P, rng)
-        
         new_I = []
-        # print "(update)", introduction
         if is_population_infected:
             new_I = self.update_ind_states(t, day, P)
-        
         self.update_observers(t, disease=self, pop=P,
                               day=day,
-                              #cases=cases,#cases=cases['infection'],
-                              #introductions=introductions,
-                              #new_I=new_I, 
                               rng=rng)
-            
-            
-        
-        # if halting, halt if no exposed or 
-        #infected individuals in population (eg for SIR)
-        #self.halt 
-        #and not sum([self.states[x].count for x in self.disease_states])
         return True
 
     def check_vaccines(self, t, day, P, t_per_year, rng):
