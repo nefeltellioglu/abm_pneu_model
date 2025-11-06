@@ -127,7 +127,6 @@ def roll_v116_maternal(P, vaccine, value, t, day, t_per_year, vaccines,
                                  "final_vaccine_time"]))
     return P
 
-
 def roll_v116(P, vaccine, value, t, day, t_per_year, vaccines, 
               at_risk_vaccine_target_groups, rng):
     cur_year = day // 364 

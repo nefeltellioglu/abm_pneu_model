@@ -806,15 +806,14 @@ class AtRiskDisease(Disease):
                            .drop(["no_of_doses",
                                             "on_time", "vaccine_type", 
                                             "final_vaccine_time"]))
-             
+
     def calc_age_group_fois(self):
-        #inf_fraction is sorted already
         """
-        takes a sorted inf_fraction with length 15.
+        Takes a sorted inf_fraction with length of 16 corresponding age groups from Prem et al
+        contact matrix.
         It assumes that the inf_fraction is sorted based on age groups.
-              
         returns a list of len == 16:
-                sum(contacts * infected fraction) in each age group for 
+                sum(contacts * infected fraction) in each age group for
                 age groups.
         """
         i = 0 
@@ -916,19 +915,17 @@ class AtRiskDisease(Disease):
                             pl.col("inf_fraction_nonppv23").cast(pl.Float64),
                             pl.col("inf_fraction_nonppv23").cast(pl.Float64),
                                  )
-             
              self.foi = pl.concat([self.foi, missing_foi_df], rechunk=True,\
                             how = 'diagonal').sort("age_group")
-         
+
          #calculate and add foi column
          self.foi = (self.foi.with_columns(
                         (self.calc_age_group_fois()).alias("prob_infection")
                         )).with_columns(
-                            
                            ((pl.col("prob_infection")* pl.col("total_inds"))
                             .round(0).cast(pl.Int32))
                            .alias("no_of_exposed"))
-         
+
          #if there is at least one infected person
          #calculate strain distribution
          if sum(self.foi["prob_infection"]):

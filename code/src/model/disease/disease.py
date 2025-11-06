@@ -1471,7 +1471,6 @@ class Disease(object):
         Returns a list of newly infectious ('symptomatic' individuals)
         
         """
-        
         new_I = P.I.filter(pl.col("will_infected"))
         P.I = (P.I.drop("will_infected", "exposed_strains"))
         return new_I

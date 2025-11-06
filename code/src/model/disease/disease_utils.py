@@ -18,11 +18,6 @@ from ..population.utils import gen_ages
 
 ####
 def add_at_risk_column(I, disease, rng, ismigrated = False):
-    #if ismigrated:
-    #    pass
-    #else:
-        #pass
-        
     #quantile is used rather than random column
     I = I.with_columns(
         (pl.when(pl.col("quantile") < \
@@ -33,23 +28,13 @@ def add_at_risk_column(I, disease, rng, ismigrated = False):
             .then(2).otherwise(0)).alias("at_risk")),
          #(pl.lit(rng.rand(I.height))).alias("random")
          )
-    #checks
-    #disease.at_risk_percentages
-    #selected = I.filter(pl.col("age").is_between(18, 34))
-    #selected.filter(pl.col("at_risk") == 1).height/selected.height
-    #selected.filter(pl.col("at_risk") > 0).height/selected.height
-        
     return I
-
-
 
 def gen_disease_states_for_mig_population(I, rng):
     #NOT USED 
     #TODO: generate disease and vaccine values for the migrated population
     disease_values, vaccine_values, immunity_values = None, None, None
-    
     return disease_values, vaccine_values, immunity_values
-
 
 def add_disease_vacc_columns(I, disease, new_inds, rng, ismigrated = False):
     #NOT USED 
@@ -60,12 +45,10 @@ def add_disease_vacc_columns(I, disease, new_inds, rng, ismigrated = False):
     :type new_inds: pl dataframe
     :param rng: The random number generator to use.
     :type rng: :class:`random.Random`
-    
     :returns updated new_inds dataframe
     """
-    
+
     if ismigrated:
-        
         disease_values, vaccine_values, immunity_values =\
                             gen_disease_states_for_mig_population(I, rng)
         new_inds = (
@@ -78,8 +61,8 @@ def add_disease_vacc_columns(I, disease, new_inds, rng, ismigrated = False):
                                                   immunity_values),
                 )
             )
-    else: 
-        
+    else:
+
         new_inds = (
                new_inds.with_columns(
                 create_disease_and_vaccine_states(len(new_inds),
@@ -188,7 +171,5 @@ def gen_age_structured_pop(disease, t_per_year, pop, pop_size, age_probs,
     pop.I, pop.next_id = pop.create_initial_population(disease, pop_size, 
                                             ages, age_days, rng,False,
                                             isUpload)
-   
-    
-   
+
     return pop
