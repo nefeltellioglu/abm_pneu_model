@@ -7642,6 +7642,7 @@ $$</p>
 </pre></div>
 <h5 id="Vaccine-Rollout">Vaccine Rollout<a class="anchor-link" href="#Vaccine-Rollout">¶</a></h5><p>The model simulates the implementation of historical vaccine schedules with their rollout years, eligible age range, annual fraction of on-time and late vaccine coverages of the eligible age group, number of doses and time interval between doses. We assume that individuals receiving the first dose on time would also receive the following doses on time. We also assume that maximum protection by a vaccine starts immediately.</p>
 <div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_vaccines</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">'''This is a function of Disease classes. At every time step, it checks each vaccine whether it's time to vaccinate individuals. If so, it identifies individuals who are going to vaccinated on time or late. For the "on time" vaccinations, it update individuals vaccine status and records "no of doses", "final vaccine type", "final vaccination time" in the individuals "vaccine" struct column. It identify individuals who are going to receive vaccination late in the upcoming time steps and assing "final_vaccination_time" as a negative "time_to_vaccinate" value. Later it checks individuals who are going to receive their late vaccination in current time by identifying individuals who have negative current time step in their "final vaccination time" column. The function is quite long and it needs to be seperated into different chunchs and they must be carried into "vaccine.py" for readability. The reason for the long function is that different types of vaccines has different conditions in their targeted group.'''</span>
 </pre></div>
 </div>
 </div>
@@ -7999,23 +8000,42 @@ to individuals pl.dataFrame.
 <h3 id="2.2.3.-Observers-">2.2.3. Observers <a name="s_observers"></a><a class="anchor-link" href="#2.2.3.-Observers-">¶</a></h3><p>In order to add remove observers the changes must be made to <code>DiseaseModel</code> class in <code>...disease_model.py</code> script. In order to create more observers or edit existing observers, changes must be made in the <a href="../model/observers">observers</a> folder.</p>
 <p>Following scripts are included in population folder:</p>
 <ul>
-<li><a href="../model/observers/obs_base.py">obs_base.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_by_age_at_risk.py">obs_disease_by_age_at_risk.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_by_age_by_product_at_risk.py">obs_disease_by_age_by_product_at_risk.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_by_age_v116.py">obs_disease_by_age_v116.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_by_age.py">obs_disease_by_age.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_by_vaccine.py">obs_disease_by_vaccine.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease_scenarios.py">obs_disease_scenarios.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_disease.py">obs_disease.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_pop.py">obs_pop.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_prevalence_by_age.py">obs_prevalence_by_age.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_prevalence_mult_age_groups.py">obs_prevalence_mult_age_groups.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_prevalence.py">obs_prevalence.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_vacc_efficacy_against_acq.py">obs_vacc_efficacy_against_acq.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_vacc_efficacy_against_disease.py">obs_vacc_efficacy_against_disease.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_vacc_rollout_scenarios.py">obs_vacc_rollout_scenarios.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_vacc_rollout.py">obs_vacc_rollout.py</a>: TODO.</li>
-<li><a href="../model/observers/obs_vaccine_by_age_by_product_at_risk.py">obs_vaccine_by_age_by_product_at_risk.py</a>: TODO.</li>
+<li><p><a href="../model/observers/obs_base.py">obs_base.py</a>: include base Observer class that has creat_storage(), load_storage(), and update() functions.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_by_age_at_risk.py">obs_disease_by_age_at_risk.py</a>: includes DiseaseObserverByAgeAtRisk observer class. It records no of serotype group specific individuals in ipd and cap cases in every age. It also records vaccinated individuals in each age as well as vaccinated individuals in ipd and cap cases.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_by_age_by_product_at_risk.py">obs_disease_by_age_by_product_at_risk.py</a>: includes DiseaseObserverByAgeByProduct observer class. It records no of individuals in each age  based on multiple categories (whether they are infected by given serotype groups, whether they have a disease, whether they were ever vaccinated/vaccinated in last year/vaccinated in last 5 years) and their vaccine name if they are vaccinated.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_by_age_v116.py">obs_disease_by_age_v116.py</a>: includes DiseaseObserverByAge observer class. The only difference of DiseaseObserverByAge observer class from obs_disease_by_age.py is that it also collects v116 specific disease outcomes by age.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_by_age.py">obs_disease_by_age.py</a>: includes DiseaseObserverByAge observer class. It records serotype group specific ipd and cap outcomes by age.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_by_vaccine.py">obs_disease_by_vaccine.py</a>: includes DiseaseObserverByVaccineAtRisk observer class. It records disease outcomes among individuals vaccinated in last year/last 5 years by age.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease_scenarios.py">obs_disease_scenarios.py</a>: includes DiseaseObserver observer class. This is an earlier version of an observer class. It is no longer used.</p>
+</li>
+<li><p><a href="../model/observers/obs_disease.py">obs_disease.py</a>: includes DiseaseObserver observer class. This is an earlier version of an observer class. It is no longer used.</p>
+</li>
+<li><p><a href="../model/observers/obs_pop.py">obs_pop.py</a>: includes PopulationObserver observer class which collects pop size and median age.</p>
+</li>
+<li><p><a href="../model/observers/obs_prevalence_by_age.py">obs_prevalence_by_age.py</a>: includes PrevalenceByAgeObserver observer class which records total individuals, total infected individuals and total infections by age every time step.</p>
+</li>
+<li><p><a href="../model/observers/obs_prevalence_mult_age_groups.py">obs_prevalence_mult_age_groups.py</a>: includes extended PrevalenceByAgeObserver observer class which records total individuals, total infected individuals, fraction of infected individuals in some age groups as well as strain specific infections in pre-defined age groups every time step.</p>
+</li>
+<li><p><a href="../model/observers/obs_prevalence.py">obs_prevalence.py</a>: includes modified PrevalenceByAgeObserver observer class which records total individuals, total infected individuals, fraction of infected individuals in some age groups every time step.</p>
+</li>
+<li><p><a href="../model/observers/obs_vacc_delivered.py">obs_vacc_delivered.py</a>: includes VaccinationDeliveredObserver observer class that records vaccines delivered at every time step based on their type as well as total number of individuals in the population.</p>
+</li>
+<li><p><a href="../model/observers/obs_vacc_efficacy_against_acq.py">obs_vacc_efficacy_against_acq.py</a>: includes VaccinationEffAcquisitionObserver observer class. It records P.vaccinated_acq_pop rows that includes  vaccinated individuals antibody levels, the serotype they are exposed to and whether they get infected or not.</p>
+</li>
+<li><p><a href="../model/observers/obs_vacc_efficacy_against_disease.py">obs_vacc_efficacy_against_disease.py</a>: includes VaccinationEffDiseaseObserver observer class. It records P.vaccinated_disease_pop rows that includes  vaccinated individuals antibody levels, the serotype they are exposed to and whether they get going to develop disease or not. This observer is not used and it needs to be updated as it records exposed strains rather than current infected strain list.</p>
+</li>
+<li><p><a href="../model/observers/obs_vacc_rollout_scenarios.py">obs_vacc_rollout_scenarios.py</a>: includes VaccinationObserver observer class. Given a birth cohort, it records what percentage of the individuals are vaccinated by individual vaccines.</p>
+</li>
+<li><p><a href="../model/observers/obs_vacc_rollout.py">obs_vacc_rollout.py</a>: includes VaccinationObserver observer class. Given a birth cohort, it records what percentage of the individuals are vaccinated by individual vaccines. The only difference from the VaccinationObserver class in obs_vacc_rollout_scenarios.py is the birth cohorts.</p>
+</li>
+<li><p><a href="../model/observers/obs_vaccine_by_age_by_product_at_risk.py">obs_vaccine_by_age_by_product_at_risk.py</a>: includes VaccineObserverByAgeByProduct observer class. Given vaccines, indivdual types (atrsik groups), time of vaccines delivered (ever, last 1 year, last 5 years), disease type (ipd, cap), it records number of individuals by age in each category.</p>
+</li>
 </ul>
 </div>
 </div>
