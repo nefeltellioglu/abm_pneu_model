@@ -7541,8 +7541,12 @@ a.anchor-link {
 <h1 id="Table-of-contents">Table of contents<a class="anchor-link" href="#Table-of-contents">¶</a></h1><ol>
 <li><p><a href="#background">Background</a></p>
 <ol>
+<li><a href="#spneu"><em>Streptococcus Pneumoniae</em></a></li>
+<li><a href="#framework">Modelling Framework</a><ol>
 <li><a href="#transmission">Transmission model</a></li>
 <li><a href="#demography">Demography</a></li>
+</ol>
+</li>
 </ol>
 </li>
 <li><p><a href="#s_structure">Model structure</a></p>
@@ -7560,7 +7564,7 @@ a.anchor-link {
 </li>
 <li><p><a href="#installation">Installing the module</a></p>
 </li>
-<li><p><a href="#run_simulation">How to run simulations</a></p>
+<li><p><a href="#run_simulation">Run an example simulation</a></p>
 </li>
 </ol>
 </div>
@@ -7573,7 +7577,15 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="1.-Background--">1. Background  <a name="background"></a><a class="anchor-link" href="#1.-Background--">¶</a></h1><p>This is an individual-based model that incorporates demographic and transmission dynamics of Streptococcus pneumoniae. Each serotype is represented individually. We assume a susceptible-infectious-susceptible (SIS) model for S. pneumoniae infection, where “infection” represents carriage of S. pneumoniae, and disease outcomes are considered for the infected individuals. Similar to previous modelling studies, the infectious duration for an individual is sampled from an exponential distribution with an age-specific mean infectious duration. Upon recovery, infectious individuals re-enter the susceptible class, with protection derived from antibodies according to the time since their last vaccination.</p>
+<h1 id="1.-Background--">1. Background  <a name="background"></a><a class="anchor-link" href="#1.-Background--">¶</a></h1><h2 id="1.1.-Streptococcus-Pneumoniae--">1.1. <em>Streptococcus Pneumoniae</em> <a name="spneu"></a><a class="anchor-link" href="#1.1.-Streptococcus-Pneumoniae--">¶</a></h2><p><em>Streptococcus pneumoniae</em> (<em>S. pneumoniae</em>) colonises the nasopharynx but can also cause infection and both non-invasive disease—such as otitis media and pneumonia—or invasive pneumococcal disease (IPD), including meningitis and bacteraemia (Yildirim et al., 2010; Hausdorff et al., 2005). Pathogenicity is largely, though not solely, determined by the polysaccharide capsular antigen (serotype) (Yildirim et al., 2010; Hausdorff et al., 2005). Over 100 pneumococcal serotypes have been identified, with varying prevalence by age and geographic location (Bertran et al., 2024; Hausdorff et al., 2005). Immunogenicity characteristics—such as the immunoglobulin G (IgG) concentration required for protection and potential to cause invasive disease—also vary by serotype (Andrews et al., 2014; Feng et al., 2024; Hausdorff et al., 2005).</p>
+<p>The substantial global burden of morbidity and mortality caused by pneumococcus is predominantly borne in low- and middle-income countries, and disproportionately affects children (Wunrow et al., 2023; Wahl et al., 2018). Older adults and children under five are also at risk in high-income settings (Grant, Slack, Theilacker, Vojicic, Dion, Reinert, Jodar, &amp; Gessner, 2023; Grant, Slack, Theilacker, Vojicic, Dion, Reinert, Jodar, &amp; Gessner, 2023). The notable burden of disease has driven the development of several pneumococcal vaccines administered according to different vaccine schedules (Bertran et al., 2024; Feng et al., 2024; Musher et al., 2022).</p>
+<p>The first vaccines comprising polysaccharide capsular antigens were poorly immunogenic in children aged &lt;2 years (O’Brien et al., 1996; Douglas &amp; Miles, 1984). Moreover, pneumococcal polysaccharide vaccines (PPVs) only activate the humoral arm of the immune system and fail to induce immune memory (Musher et al., 2022; Davies et al., 2022). Consequently, although PPVs provide protection against IPD, they show limited and variable efficacy in preventing community-acquired pneumonia (CAP) and do not reduce nasopharyngeal colonisation, thereby failing to interrupt transmission (Moberley et al., 2013).</p>
+<p>These limitations were overcome by the development of pneumococcal conjugate vaccines (PCVs), in which polysaccharides are conjugated to a carrier protein (Musher et al., 2022; Davies et al., 2022). Conjugation enhances immunogenicity and effectiveness by inducing immune memory, including in young children (Musher et al., 2022). Conjugate vaccines protect against both systemic and mucosal infection and prevent nasopharyngeal colonisation by vaccine serotypes, thereby reducing transmission in the community (O’Brien et al., 2007; Feemster et al., 2024).</p>
+<p>A seven-valent conjugate vaccine (7vPCV), first licensed in the USA in 2000, included seven serotypes causing at least 70% of disease in young children in western industrialised countries (Hausdorff et al., 2005; O’Brien et al., 2007). However, serotype replacement and persistent burden of disease have driven the creation of higher-valency vaccines (Wunrow et al., 2023; Musher et al., 2022; Feemster et al., 2024; O’Brien et al., 2007). A 13-valent PCV (13vPCV) became available in 2010, and more recently 15vPCV, 20vPCV, and 21vPCV have been developed (Andrews et al., 2014; Musher et al., 2022; Feemster et al., 2024). However, there is concern regarding declining immunogenicity against shared serotypes with higher-valency PCVs, with uncertain implications for effectiveness (Feemster et al., 2024).</p>
+<p>Variability in serotype-specific immunogenic responses among multiple vaccine products necessitates a flexible approach to modelling the potential impacts of different vaccines. While previous models examining pneumococcal vaccines account for the multi-serotype nature of <em>S. pneumoniae</em> to some degree, they often depend on simplifying assumptions related to serotypes (e.g., vaccine-type groupings, restricted serotype sets), co-infections (e.g., assuming no co-infections within vaccine-type groups), immune response (e.g., homogeneous responses), and host representation (e.g., single-age-group focus) (Melegaro &amp; Edmunds, 2004; De Cao et al., 2014; Wasserman et al., 2018; Choi et al., 2019; Choi et al., 2012; Flasche et al., 2013; Megiddo et al., 2018).</p>
+<p>For example, models that group serotypes into vaccine and non-vaccine types typically assume no co-infection within each serotype group, which prevents co-infection with two non-vaccine serotypes (e.g., De Cao et al., 2014). This assumption can alter transmission dynamics once vaccine-type serotype circulation decreases following vaccine introduction. Additionally, these models often assume a homogeneous vaccine-induced immune response across all vaccine-type serotypes (e.g., Megiddo et al., 2018), preventing incorporation of observed serotype-specific immunogenicity differences. These assumptions limit the exploration of vaccine program effectiveness and the impact of reduced immunogenicity of higher-valency vaccines.</p>
+<p>We developed a flexible individual-level modelling framework that incorporates differences in vaccine immunogenicity across individual serotypes, allowing estimation of relative correlates of protection using historical data. This guide explains the structure and contents of the modelling framework’s code repository.</p>
+<h2 id="1.2.-Modelling-Framework--">1.2. Modelling Framework  <a name="framework"></a><a class="anchor-link" href="#1.2.-Modelling-Framework--">¶</a></h2><p>This repository includes an individual-based model that incorporates demographic and transmission dynamics of <em>Streptococcus pneumoniae</em>. Each serotype is represented individually. We assume a susceptible-infectious-susceptible (SIS) model for <em>S. pneumoniae</em> infection, where “infection” represents carriage of <em>S. pneumoniae</em> (infectious symptomatic or asymptomatic colonisation of the nasopharynx by <em>S. pneumoniae</em>), and disease outcomes are considered for the infected individuals.</p>
 </div>
 </div>
 </div>
@@ -7584,8 +7596,15 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1.1.-Transmission-model-">1.1. Transmission model <a name="transmission"></a><a class="anchor-link" href="#1.1.-Transmission-model-">¶</a></h3><h5 id="Mixing-assumptions">Mixing assumptions<a class="anchor-link" href="#Mixing-assumptions">¶</a></h5><p>Transmission within and between age groups is driven by contact rates, derived from synthetic contact matrices . In this work, we have assumed contacts in our population according to the contact matrices provided by Prem et al.</p>
-<h5 id="Carriage-assumptions">Carriage assumptions<a class="anchor-link" href="#Carriage-assumptions">¶</a></h5><p>We assume that individuals are exposed to a single serotype at every time step. The exposed serotype is randomly selected from weighted serotype distribution in the population:</p>
+<h3 id="1.2.1.-Transmission-model-">1.2.1. Transmission model <a name="transmission"></a><a class="anchor-link" href="#1.2.1.-Transmission-model-">¶</a></h3><p>Our modelling framework is comprised of three integrated models (Fig 1).The model incorporates assumptions about mixing and carriage. In this section, we outline these assumptions and describe the clinical model and vaccine rollout in detail.</p>
+<p align="center">
+<img alt="Fig 1: Modelling framework" src="images/modelling_diagram.png" width="800"/>
+<br/>
+<b>Fig 1:</b> Modelling framework
+</p>
+<h5 id="Mixing-assumptions">Mixing assumptions<a class="anchor-link" href="#Mixing-assumptions">¶</a></h5><p>Transmission within and between age groups is driven by contact rates, derived from synthetic contact matrices. In this work, we have assumed contacts in our population according to the contact matrices provided by Prem et al. (2017).</p>
+<h5 id="Carriage-assumptions">Carriage assumptions<a class="anchor-link" href="#Carriage-assumptions">¶</a></h5><p>Similar to previous modelling studies, the infectious duration for an individual is sampled from an exponential distribution with an age-specific mean infectious duration. Upon recovery, infectious individuals re-enter the susceptible class, with protection derived from antibodies according to the time since their last vaccination.</p>
+<p>We assume that individuals are exposed to a single serotype at every time step. The exposed serotype is randomly selected from weighted serotype distribution in the population:</p>
 <p>$$
 Pr(\text{Exposure to serotype } a) = \frac{\tau_a * I_a}{\sum_s (\tau_s * I_s)}
 $$</p>
@@ -7593,9 +7612,14 @@ $$</p>
 <p>$$
 Pr(\text{Infection by serotype } a \mid \text{exposure to serotype } a) = (1 - e^{-\text{foi}_i}) \, * V_a \, * C
 $$</p>
-<p>where $\text{foi}_i$ represents the force of infection on an individual in age class $i$, $V_a$ represents the vaccine-induced probability of acquisition multiplier to serotype $a$ (see Section 2.1), and $C$ represents the reduction of susceptibility given existing infections.<br/>
-We allow co-infections in the model, assuming that individuals may be infected with multiple serotypes concurrently, with a reduced probability of acquiring another serotype if already infected, representing within-host competition. In this work, we assumed that $C$ takes values of 1 (fully susceptible), 0.8, and 0 for the existing number of infections of 0, 1, and 2, respectively, which means that individuals could only be infected with two serotypes concurrently.<br/>
-The force of infection comprises age-specific community transmission:</p>
+<p>where:</p>
+<ul>
+<li>$\text{foi}_i$ = Force of infection on an individual in age class $i$</li>
+<li>$V_a$ = Vaccine-induced probability of acquisition multiplier to serotype $a$</li>
+<li>$C$ = Reduction of susceptibility given existing infections</li>
+</ul>
+<p>We allow co-infections in the model, assuming that individuals may be infected with multiple serotypes concurrently, with a reduced probability of acquiring another serotype if already infected, representing within-host competition. In this work, we assumed that $C$ takes values of 1 (fully susceptible), 0.8, and 0 for the existing number of infections of 0, 1, and 2, respectively, which means that individuals could only be infected with two serotypes concurrently. $C$ is assigned by two parameters: 'reduction_in_susceptibility_coinfections' and 'max_no_coinfections' which are set as 0.8 and 2, respectively. Parameter 'max_no_coinfections' can be set as higher values, however, in order to incorporate values other than 2 when population is going to be saved post simulation, population must be saved in a parquet file rather than 3 separate csv files. Current version of population recording assumes that individuals can have up to two co-infections. In addition, 'reduction_in_susceptibility_coinfections' only checks whether current number of co-infections is higher than one. Therefore, there is no additional reduction in sussceptibility if individual is already infected by two or more serotypes.</p>
+<p>The force of infection comprises age-specific community transmission:</p>
 <p>$$
 \text{foi}_i = q \sum_s \tau_s \left( \sum_j \frac{\eta_{ij} * I_{js}}{N_j} \right)
 $$</p>
@@ -7607,43 +7631,16 @@ $$</p>
 <li>$I_{js}$ = Number of individuals in age group $j$ infected with serotype $s$</li>
 <li>$N_j$ = Number of individuals in age group $j$</li>
 </ul>
-<p>At every time step, disease transmission is updated based on the following order: vaccine rollout (in check_vaccines function), checking disease transmission and recovery (in check_exposure function), checking external exposure to the community (in external_exposure function), updating individuals states (in update_ind_states function). Finally, observes that collect summary statistics are updated:</p>
-<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">t_per_year</span><span class="p">,</span> <span class="n">rng</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""</span>
-<span class="sd">        Updates the disease states of the population.</span>
-<span class="sd">        """</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">check_vaccines</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">t_per_year</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
-        <span class="c1">#calculate foi</span>
-        <span class="n">is_population_infected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_foi</span><span class="p">(</span><span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmatrix</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">is_population_infected</span><span class="p">:</span>
-            <span class="c1">#at least one inf individual in the community</span>
-            <span class="n">cases</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_exposure</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
-        <span class="n">introductions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">external_exposure</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
-        <span class="n">new_I</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">if</span> <span class="n">is_population_infected</span><span class="p">:</span>
-            <span class="n">new_I</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_ind_states</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_observers</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">disease</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">pop</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
-                              <span class="n">day</span><span class="o">=</span><span class="n">day</span><span class="p">,</span>
-                              <span class="n">rng</span><span class="o">=</span><span class="n">rng</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">True</span>
-</pre></div>
-<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_exposure</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">'''check_exposure() function of disease classes simulates the transmission mechanisms as described above. '''</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">check_recoveries</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">'''Once an individual's carriage end time is reached, the serotype is removed from indivudual's strain_list. This function is called within check_exposure(); however, it can be moved outside of check_exposure() function.'''</span>
-</pre></div>
-<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">external_exposure</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">'''In addition to community-level circulation, we introduce serotypes externally via two processes. First, an external exposure rate simulates the ongoing introduction of serotypes through population migration, assumed to have the same age-specific and serotype-specific incidence of S. pneumoniae carriage as the local population (which maintains the same level of serotype and age specific carriage  while population size increases). Second, introduction of any serotype sampled uniformly from the set of all possible serotypes and therefore may not be currently circulating within the local population (which allows possibility of serotype replacement under immune selection over time). '''</span>
-</pre></div>
-<h5 id="Clinical-model">Clinical model<a class="anchor-link" href="#Clinical-model">¶</a></h5><p>The clinical model takes information on the age and vaccine history of newly infected individuals from the transmission model, and the antibody levels at the time of infection, derived from these values, from the immunity model. The model then determines whether an infected individual develops a disease outcome (IPD or CAP), according to the relative probability of each occurring, and records the disease outcomes when they occur. In this work, we assume that 23vPPV is not effective against acquisition and developing CAP.</p>
-<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_disease</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">'''Disease outcomes (IPD or hospitalised CAP) are calculated at every time step. The new cases are recorded in P.disease_pop which is a pl.DataFrame that is restarted as a a new DataFrame at every year. This reinitialisation does not affect the transmission dynamics as it is assumed that developing disease do not have an impact on the transmission dynamics. '''</span>
-</pre></div>
+<h5 id="Clinical-model">Clinical model<a class="anchor-link" href="#Clinical-model">¶</a></h5><p>The clinical model takes information on the age and vaccine history of newly infected individuals from the transmission model, and the antibody levels at the time of infection, derived from these values, from the immunity model. Disease outcomes (IPD or hospitalised CAP) are calculated at every time step. The new cases are recorded in P.disease_pop which is a pl.DataFrame that is restarted as a a new DataFrame at every year. This reinitialisation does not affect the transmission dynamics as it is assumed that developing disease do not have an impact on the transmission dynamics. In this work, we assume that 23vPPV is not effective against acquisition and developing CAP.</p>
 <h5 id="Vaccine-Rollout">Vaccine Rollout<a class="anchor-link" href="#Vaccine-Rollout">¶</a></h5><p>The model simulates the implementation of historical vaccine schedules with their rollout years, eligible age range, annual fraction of on-time and late vaccine coverages of the eligible age group, number of doses and time interval between doses. We assume that individuals receiving the first dose on time would also receive the following doses on time. We also assume that maximum protection by a vaccine starts immediately.</p>
-<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_vaccines</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">'''This is a function of Disease classes. At every time step, it checks each vaccine whether it's time to vaccinate individuals. If so, it identifies individuals who are going to vaccinated on time or late. For the "on time" vaccinations, it update individuals vaccine status and records "no of doses", "final vaccine type", "final vaccination time" in the individuals "vaccine" struct column. It identify individuals who are going to receive vaccination late in the upcoming time steps and assing "final_vaccination_time" as a negative "time_to_vaccinate" value. Later it checks individuals who are going to receive their late vaccination in current time by identifying individuals who have negative current time step in their "final vaccination time" column. The function is quite long and it needs to be seperated into different chunchs and they must be carried into "vaccine.py" for readability. The reason for the long function is that different types of vaccines has different conditions in their targeted group.'''</span>
-</pre></div>
+<h5 id="Single-time-step-update-of-disease-dynamics">Single time step update of disease dynamics<a class="anchor-link" href="#Single-time-step-update-of-disease-dynamics">¶</a></h5><p>At every time step, disease transmission is updated in the update() function of a disease class based on the following order:</p>
+<ul>
+<li>vaccine rollout (in check_vaccines function),</li>
+<li>checking disease transmission, recovery, and disease outcomes (in check_exposure function),</li>
+<li>checking external exposure to the community (in external_exposure function),</li>
+<li>updating individuals states (in update_ind_states function).</li>
+<li>Finally, observes that collect summary statistics are updated (in update_observers function)</li>
+</ul>
 </div>
 </div>
 </div>
@@ -7654,7 +7651,53 @@ $$</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1.2.-Demography-">1.2. Demography <a name="demography"></a><a class="anchor-link" href="#1.2.-Demography-">¶</a></h3><p>The model includes births, ageing, age-specific mortality, and age-specific migration to capture the age distribution of a population over time. It takes inputs of initial population size, initial age distribution, age-specific death rates, annual net birth rates, annual migration rates, and age distribution in the emigrated population to simulate demographic dynamics. We sourced the inputs from Australian Bureau of Statistics and Macro Trends Global to align with Australian population dynamics.</p>
+<h3 id="1.2.2.-Demography-">1.2.2. Demography <a name="demography"></a><a class="anchor-link" href="#1.2.2.-Demography-">¶</a></h3><p>The model includes births, ageing, age-specific mortality, and age-specific migration to capture the age distribution of a population over time. It takes inputs of initial population size, initial age distribution, age-specific death rates, annual net birth rates, annual migration rates, and age distribution in the emigrated population to simulate demographic dynamics. We sourced the inputs from Australian Bureau of Statistics and Macro Trends Global to align with Australian population dynamics and record the data in the data folder. In oder to use the model for other populations, the following parameters in the params.py script should be changed:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value or File</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>age_distribution</code></td>
+<td><code>population/age_dist_2002.dat</code></td>
+<td>Initial age distribution</td>
+</tr>
+<tr>
+<td><code>initial_death_rates</code></td>
+<td><code>population/death_rates_2002.dat</code></td>
+<td>Death rate used at the start</td>
+</tr>
+<tr>
+<td><code>later_death_rates</code></td>
+<td><code>None</code></td>
+<td>Death rate can be updated later (e.g., <code>'death_rates_2008.dat'</code> from 2008)</td>
+</tr>
+<tr>
+<td><code>year_to_change_death_rates</code></td>
+<td><code>6</code></td>
+<td>If <code>later_death_rates</code> is not <code>None</code>, update starts at this year</td>
+</tr>
+<tr>
+<td><code>birth_rates</code></td>
+<td><code>population/birth_rates.dat</code></td>
+<td>Birth rates file</td>
+</tr>
+<tr>
+<td><code>mig_rates</code></td>
+<td><code>population/migration_rates.dat</code></td>
+<td>Migration rates file</td>
+</tr>
+<tr>
+<td><code>age_distribution_mig</code></td>
+<td><code>population/age_dist_migration_2018.dat</code></td>
+<td>Age distribution of the emigrating population</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -7665,7 +7708,7 @@ $$</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="2.-Model-structure-">2. Model structure <a name="s_structure"></a><a class="anchor-link" href="#2.-Model-structure-">¶</a></h1><p>The model that simulates pneumococcal transmission in an aged-structured population is structured as the following:</p>
+<h1 id="2.-Repo-structure-">2. Repo structure <a name="s_structure"></a><a class="anchor-link" href="#2.-Repo-structure-">¶</a></h1><p>The repository that simulates pneumococcal transmission in an aged-structured population is structured as the following:</p>
 <ol>
 <li><a href="#s_run_scenarios">Run Scenarios</a></li>
 <li><a href="#s_model">Model</a><ol>
@@ -7693,58 +7736,30 @@ $$</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="2.1.-Run-Scenarios-">2.1. Run Scenarios <a name="s_run_scenarios"></a><a class="anchor-link" href="#2.1.-Run-Scenarios-">¶</a></h3><p>Scripts  <code>run_....py</code> takes <code>new_go_single()</code> function from <code>at_risk_varying_disease_model.py</code> script. <code>new_go_single()</code> function runs <code>go_single()</code> function from corresponding <code>src/model/disease/at_risk_varying_run.py</code> script and it runs a single simulation from a single parameter set. The docstring of <code>go_single()</code> is provided below.
-Parameter set are taken from <code>..._params.py</code> from the same folder and can be further edited in <code>run_....py</code> script.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">model.disease.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">go_single</span>
-
-<span class="n">func_name</span> <span class="o">=</span> <span class="n">go_single</span><span class="o">.</span><span class="vm">__name__</span>
-<span class="n">func_docstring</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">go_single</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"def </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">():"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Docstring: </span><span class="si">{</span><span class="n">func_docstring</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>def go_single():
-Docstring: Run a single simulation (or load if previously run).
-
-It takes a parameter dictionary, disease class, contact matrix, a random
-seed, a simulation type and then runs a single simulation.
-
-:param p: The simulation parameters
-:type p: dict
-:param disease_type: The disease model to simulate.
-:type disease_type: :class:`DiseaseBase`
-:param cmatrix: The population contact matrix.
-:type cmatrix: :class:`ContactMatrix`
-:param cur_seed: Random seed for current experiment.
-:type cur_seed: int
-:param sim_type: Simulation class to use (current options are SimEpi or SimBDI).
-:type sim_type: :class:`SimEpi`
-:param verbose: Flag to indicate whether to write output to terminal.
-:type verbose: bool
-</pre>
-</div>
+<h3 id="Run-Scenarios-">Run Scenarios <a name="s_run_scenarios"></a><a class="anchor-link" href="#Run-Scenarios-">¶</a></h3><p>Table of script interactions in running scenarios is provided below.  <code>run_....py</code> scripts are used to run a single or batch runs which eventually calls  <code>go_single()</code> function.</p>
+<table>
+<thead>
+<tr>
+<th>Function or script</th>
+<th>Script</th>
+<th>Inputs from other scripts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_....py</code> (main script)</td>
+<td><code>run_....py</code></td>
+<td>Imports parameter set from <code>..._params.py</code>; runs imported <code>new_go_single()</code></td>
+</tr>
+<tr>
+<td><code>new_go_single()</code></td>
+<td><a href="../run_scenarios/at_risk_varying_disease_model.py">at_risk_varying_disease_model.py</a></td>
+<td>Called by <code>run_....py</code>; passes parameters to <code>go_single()</code></td>
+</tr>
+</tbody>
+</table>
+<p>| <code>go_single()</code>                  | <a href="../model/disease/at_risk_varying_run.py">at_risk_varying_run.py</a> | Receives parameter set via <code>new_go_single</code>. It takes a parameter dictionary, disease class, contact matrix, a random seed, a simulation type and then runs a single simulation. :param p: The simulation parameters; :param disease_type: The disease class to simulate; :param cmatrix: Contact matrix class; :param cur_seed: Random seed (int) for current experiment; :param sim_type: Simulation class to use.
+| Parameter set (<code>params</code>)   |  <a href="../run_scenarios/base_params.py">base_params.py</a>    | Loaded by <code>run_....py</code>; optionally edited before passed onward    |</p>
 </div>
 </div>
 </div>
@@ -7755,13 +7770,158 @@ seed, a simulation type and then runs a single simulation.
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="2.2.-Model-">2.2. Model <a name="s_model"></a><a class="anchor-link" href="#2.2.-Model-">¶</a></h3><p>The model is structured in three subfolders:</p>
+<h3 id="2.2.-Model-">2.2. Model <a name="s_model"></a><a class="anchor-link" href="#2.2.-Model-">¶</a></h3><p>The main function that is called from Model folder is <code>go_single()</code> function located in <a href="../model/disease/at_risk_varying_run.py">at_risk_varying_run.py</a> which simulates both disease and demographical dynamics in the update function of the simulation class. Here we list the docstring of go_single function and provide descriptions of each input in a table.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">go_single</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">disease_type</span><span class="p">,</span> <span class="n">cmatrix</span><span class="p">,</span> <span class="n">cur_seed</span><span class="p">,</span> <span class="n">sim_type</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Run a single simulation (or load if previously run).</span>
+<span class="sd">    :param p: The simulation parameters</span>
+<span class="sd">    :type p: dict</span>
+<span class="sd">    :param disease_type: The disease model to simulate.</span>
+<span class="sd">    :type disease_type: :class:`DiseaseBase`</span>
+<span class="sd">    :param cmatrix: The population contact matrix.</span>
+<span class="sd">    :type cmatrix: :class:`ContactMatrix`</span>
+<span class="sd">    :param cur_seed: Random seed for current experiment.</span>
+<span class="sd">    :type cur_seed: int</span>
+<span class="sd">    :param sim_type: Simulation class to use (current options are SimEpi or SimBDI).</span>
+<span class="sd">    :type sim_type: :class:`SimEpi`</span>
+<span class="sd">    :param verbose: Flag to indicate whether to write output to terminal.</span>
+<span class="sd">    :type verbose: bool</span>
+<span class="sd">    """</span>
+</pre></div>
+<table>
+<thead>
+<tr>
+<th>Function / Class</th>
+<th>Script</th>
+<th>Inputs from other scripts / Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>go_single()</code></td>
+<td><a href="../model/disease/at_risk_varying_run.py">at_risk_varying_run.py</a></td>
+<td>Takes a simulation class (with pre-define population class inside simulation script), a disease class, a contract matrix class, and a parameter set</td>
+</tr>
+<tr>
+<td><code>DisSimulation</code>  or <code>AtRiskDisSimulation</code></td>
+<td><a href="../model/disease/disease_simulation.py">disease_simulation.py</a> or <a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a></td>
+<td>Simulation class; simulates demographic dynamics and disease transmission model</td>
+</tr>
+<tr>
+<td><code>Disease(object)</code> or <code>AtRiskDisease(Disease)</code></td>
+<td><a href="../model/disease/disease.py">disease.py</a> or  <a href="../model/disease/at_risk_varying_disease.py">at_risk_varying_disease.py</a></td>
+<td>Keeps functions to simulate multi-strain pathogen transmission in a population with age structure.</td>
+</tr>
+</tbody>
+</table>
+<p><code>KnownContactMatrix(object)</code>| <a href="../model/disease/contact_matrix.py">contact_matrix.py</a> | Contact matrix class that generates a matrix class from a given matrix csv file.  |</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="2.2.1.-Disease-">2.2.1. Disease <a name="s_disease"></a><a class="anchor-link" href="#2.2.1.-Disease-">¶</a></h3><p>In this section, we describe the classes included in the disease folder. We then outline each Python script in the folder and highlight the main functions of the disease classes that are useful for understanding how the disease is simulated.</p>
+<p>Following classes are included in different scripts in disease folder:</p>
+<p>Table: List of classes in disease folder</p>
+<table>
+<thead>
+<tr>
+<th>Function Name</th>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Disease(object)</code></td>
+<td><a href="../model/disease/disease.py">disease.py</a></td>
+<td>Class to keep functions to simulate multi-strain pathogen transmission in a population with age structure. The list of main functions are provided in the following table.</td>
+</tr>
+<tr>
+<td><code>AtRiskDisease(Disease)</code></td>
+<td><a href="../model/disease/at_risk_varying_disease.py">at_risk_varying_disease.py</a></td>
+<td>The only difference from Disease class above is that it includes at_risk conditions of individuals in disease outcome.</td>
+</tr>
+<tr>
+<td><code>DisSimulation(Simulation)</code></td>
+<td><a href="../model/disease/disease_simulation.py">disease_simulation.py</a></td>
+<td>Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics.</td>
+</tr>
+<tr>
+<td><code>AtRiskDisSimulation(DisSimulation)</code></td>
+<td><a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a></td>
+<td>Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics. The only difference is that it takes AtRiskDisPopulation as an input population class rather than DisPopulation population class which includes atrisk column for individuals. The demographical updates include births, deaths, aging, immigration. It makes the demographical and disease related updates in DisPopulation class object. In _main_loop(), it updated demography (if True) and disease transmission and save the population (if True) when the simulation ends. Currently population is saved in three different csv files due to the nested struct columns of list of strains (_strain_list.csv) and corresponding time until clearance (_endList.csv) and the rest of the columns. This saving section can be later updated by using write_parquet function of polars library which can write nested columns into the same file. The only downside would be that the saved parquet files cannot be opened by excel for an easy review of the dataset.</td>
+</tr>
+<tr>
+<td><code>KnownContactMatrix(object)</code></td>
+<td><a href="../model/disease/contact_matrix.py">contact_matrix.py</a></td>
+<td>Contact matrix class that generates a matrix class from a given matrix csv file. KnownContactMatrix class is then given as an input to go_single() function</td>
+</tr>
+</tbody>
+</table>
+<p>Following scripts are included in disease folder:</p>
 <ul>
-<li><a href="#s_disease">disease</a> folder stores disease model and disease simulation classes,</li>
-<li><a href="#s_population">population</a> folder stores population classes,</li>
-<li><a href="#s_observers">observers</a> folder stores scripts to collect summary statistics.</li>
+<li><p><a href="../model/disease/antibody_levels.py">antibody_levels.py</a>: includes creating of vaccine induced serotype, vaccine, and dose specific antibody levels as well as waning estimations of initial antibody levels.</p>
+</li>
+<li><p><a href="../model/disease/disease.py">disease.py</a>: includes Disease class which is a main input of go_single() function. <code>DiseaseModel</code> class takes observers from <a href="../model/observers">observers</a> folder to collect summary statistics.</p>
+</li>
+<li><p><a href="../model/disease/at_risk_varying_disease.py">at_risk_varying_disease.py</a>: includes AtRiskDisease class. The only difference from Disease class above is that it includes at_risk conditions of individuals in disease outcome. The list of main functions of a disease class is listed in the table below.</p>
+</li>
+<li><p><a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a>: includes AtRiskDisSimulation class which takes a disease class and simulates disease and demographical dynamics. The only difference is that it takes AtRiskDisPopulation as an input population class rather than DisPopulation population class which includes atrisk column for individuals. Docstring of DisSimulation is provided below.</p>
+</li>
+<li><p><a href="../model/disease/contact_matrix.py">contact_matrix.py</a>: includes KnownContactMatrix class that generate a matrix class from a given matrix csv file. KnownContactMatrix class is then given as an input to go_single() function.</p>
+</li>
+<li><p><a href="../model/disease/disease_simulation.py">disease_simulation.py</a>: includes DisSimulation class which takes a disease class and simulates disease and demographical dynamics. DisSimulation class is one of the main input of go_single() function. Docstring of DisSimulation is provided below.</p>
+</li>
+<li><p><a href="../model/disease/disease_utils.py">disease_utils.py</a>: includes two helper functions: gen_age_structured_pop() and add_at_risk_column().</p>
+</li>
+<li><p><a href="../model/disease/run.py">run.py</a>: includes go_single() function which takes a disease class, a Simulation class, a contact matrix class with a parameter set to simulate disease and demographical dynamics.</p>
+</li>
+<li><p><a href="../model/disease/at_risk_varying_run.py">at_risk_varying_run.py</a>: includes go_single() function which takes a disease class, a Simulation class, a contact matrix class with a parameter set to simulate disease and demographical dynamics.</p>
+</li>
+<li><p><a href="../model/disease/vaccine_rollout.py">vaccine_rollout.py</a>: includes three functions: roll_v116(), roll_v116_maternal(), and remove_v116_maternal(). This script is recently included to reduce the size of check_vaccines() function. check_vaccines() function must be divided into many subfunctions and carried into vaccine_rollout.py script.</p>
+</li>
 </ul>
-<p><code>go_single()</code> function in <code>at_risk_varying_run.py</code> in <a href="#s_disease">disease</a> folder takes the input of either <code>DisSimulation</code> (from <a href="../model/disease/disease_simulation.py">disease_simulation.py</a>) or <code>AtRiskDisSimulation</code> (from <a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a>) classes. Both <code>DisSimulation</code> or <code>AtRiskDisSimulation</code> classes simulate the demographical dynamics and disease transmsision (based on given disease class) in the population. The <code>AtRiskDisSimulation</code> class is a child class of  <code>DisSimulation</code>. The main difference is that <code>AtRiskDisSimulation</code> class assigns at-risk flags to individuals.</p>
+<p>Table: Main functions of Disease class</p>
+<table>
+<thead>
+<tr>
+<th>Function Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>check_exposure()</code></td>
+<td>Simulates the transmission mechanisms of the disease classes as described above.</td>
+</tr>
+<tr>
+<td><code>check_recoveries()</code></td>
+<td>Once an individual's carriage end time is reached, the serotype is removed from their <code>strain_list</code>. This function is called within <code>check_exposure()</code>, but it can be moved outside if needed.</td>
+</tr>
+<tr>
+<td><code>external_exposure()</code></td>
+<td>Introduces serotypes externally via two processes: (1) migration-driven introduction based on local age- and serotype-specific carriage, and (2) uniform sampling of any possible serotype, enabling serotype replacement.</td>
+</tr>
+<tr>
+<td><code>external_exposure()</code></td>
+<td>Introduces serotypes externally via two processes: (1) migration-driven introduction based on local age- and serotype-specific carriage, and (2) uniform sampling of any possible serotype, enabling serotype replacement.</td>
+</tr>
+<tr>
+<td><code>check_disease()</code></td>
+<td>Disease outcomes (IPD or hospitalised CAP) are calculated at every time step. The new cases are recorded in P.disease_pop which is a pl.DataFrame that is restarted as a a new DataFrame at every year. This reinitialisation does not affect the transmission dynamics as it is assumed that developing disease do not have an impact on the transmission dynamics. <code>check_disease()</code> is currently called in <code>check_exposure()</code> but it can be moved outside of <code>check_exposure()</code> function.</td>
+</tr>
+<tr>
+<td><code>check_vaccines()</code></td>
+<td>At every time step, it checks each vaccine whether it's time to vaccinate individuals. If so, it identifies individuals who are going to vaccinated on time or late. For the "on time" vaccinations, it update individuals vaccine status and records "no of doses", "final vaccine type", "final vaccination time" in the individuals "vaccine" struct column. It identify individuals who are going to receive vaccination late in the upcoming time steps and assing "final_vaccination_time" as a negative "time_to_vaccinate" value. Later it checks individuals who are going to receive their late vaccination in current time by identifying individuals who have negative current time step in their "final vaccination time" column. The function is quite long and it needs to be seperated into different chunchs and they must be carried into "vaccine.py" for readability. The reason for the long function is that different types of vaccines has different conditions in their targeted group.</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -7772,174 +7932,14 @@ seed, a simulation type and then runs a single simulation.
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="2.2.1.-Disease-">2.2.1. Disease <a name="s_disease"></a><a class="anchor-link" href="#2.2.1.-Disease-">¶</a></h3><p>Following scripts are included in disease folder:</p>
-<ul>
-<li><a href="../model/disease/antibody_levels.py">antibody_levels.py</a>: includes creating of vaccine induced serotype, vaccine, and dose specific antibody levels as well as waning estimations of initial antibody levels.</li>
-<li><a href="../model/disease/at_risk_varying_disease.py">at_risk_varying_disease.py</a>: includes AtRiskDisease class. The only difference from Disease class above is that it includes at_risk conditions of individuals in disease outcome.</li>
-<li><a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a>: includes AtRiskDisSimulation class which takes a disease class and simulates disease and demographical dynamics. The only difference is that it takes AtRiskDisPopulation as an input population class rather than DisPopulation population class which includes atrisk column for individuals. Docstring of DisSimulation is provided below.</li>
-<li><a href="../model/disease/contact_matrix.py">contact_matrix.py</a>: includes KnownContactMatrix class that generate a matrix class from a given matrix csv file. KnownContactMatrix class is then given as an input to go_single() function.</li>
-<li><a href="../model/disease/disease.py">disease.py</a>: includes Disease class which is another other main input of go_single() function. <code>DiseaseModel</code> class takes observers from <a href="../model/observers">observers</a> folder to collect summary statistics.</li>
-<li><a href="../model/disease/disease_simulation.py">disease_simulation.py</a>: includes DisSimulation class which takes a disease class and simulates disease and demographical dynamics. DisSimulation class is one of the main input of go_single() function. Docstring of DisSimulation is provided below.</li>
-<li><a href="../model/disease/disease_utils.py">disease_utils.py</a>: includes two helper functions: gen_age_structured_pop() and add_at_risk_column().</li>
-<li><a href="../model/disease/run.py">run.py</a>: includes go_single() function which takes a disease class, a Simulation class, a contact matrix class with a parameter set to simulate disease and demographical dynamics.</li>
-<li><a href="../model/disease/vaccine_rollout.py">vaccine_rollout.py</a>: includes three functions: roll_v116(), roll_v116_maternal(), and remove_v116_maternal(). This script is recently included to reduce the size of check_vaccines() function. check_vaccines() function must be divided into many subfunctions and carried into vaccine_rollout.py script.</li>
-</ul>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">model.disease.disease_simulation</span><span class="w"> </span><span class="kn">import</span> <span class="n">DisSimulation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">model.disease.at_risk_varying_disease_simulation</span><span class="w"> </span><span class="kn">import</span> <span class="n">AtRiskDisSimulation</span>
-<span class="n">class_name</span> <span class="o">=</span> <span class="n">DisSimulation</span><span class="o">.</span><span class="vm">__name__</span>
-<span class="n">class_docstring</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">DisSimulation</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Class Name: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Docstring: </span><span class="si">{</span><span class="n">class_docstring</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Class Name: DisSimulation
-Docstring: Simulation class that simulates disease and demographical dynamics 
-at every step.
-
-The demographical updates include births, deaths, aging, immigration.
-It makes the demographical and disease related updates in 
-DisPopulation class object.
-
-In _main_loop(), it updated demography (if True) and disease transmission
-and save the population (if True) when the simulation ends. 
-
-Currently population is saved in three different csv files due to the 
-nested struct columns of list of strains (_strain_list.csv) and 
-corresponding time until clearance (_endList.csv) and the rest of the 
-columns. This saving section can be later updated by using write_parquet
-function of polars library which can write nested columns into the same
-file. The only downside would be that the saved parquet files cannot be 
-opened by excel for an easy review of the dataset.
-
-
-:param p: dictionary of simulation parameters.
-:type p: dict
-:param create_pop: If `True` (default), create a random population; 
-    otherwise, this will need to be done later.
-:type create_pop: bool
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">class_name</span> <span class="o">=</span> <span class="n">AtRiskDisSimulation</span><span class="o">.</span><span class="vm">__name__</span>
-<span class="n">class_docstring</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">AtRiskDisSimulation</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Class Name: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Docstring: </span><span class="si">{</span><span class="n">class_docstring</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Class Name: AtRiskDisSimulation
-Docstring: The same as the parent DisSimulation class. The only difference
-is that it takes AtRiskDisPopulation as an input population class rather 
-than DisPopulation population class which includes atrisk column for 
-individuals.
-
-:param p: dictionary of simulation parameters.
-:type p: dict
-:param create_pop: If `True` (default), create a random population; 
-    otherwise, this will need to be done later.
-:type create_pop: bool
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">model.disease.at_risk_varying_disease</span><span class="w"> </span><span class="kn">import</span> <span class="n">AtRiskDisease</span>
-<span class="n">class_name</span> <span class="o">=</span> <span class="n">AtRiskDisease</span><span class="o">.</span><span class="vm">__name__</span>
-<span class="n">class_docstring</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getdoc</span><span class="p">(</span><span class="n">AtRiskDisease</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Class Name: </span><span class="si">{</span><span class="n">class_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Docstring: </span><span class="si">{</span><span class="n">class_docstring</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Class Name: AtRiskDisease
-Docstring: Disease class that updates disease state of a population.
-
-It simulates a multi-strain pathogen transmission in a population with age
-structure.
-
-:param:
-    p: parameter dictionary
-    cmatrix: Contact Matrix
-    rng: RandomNumber Generator
-    fname: FileName to save the collected statistics.
-    mode: "w" is used as the base mode which writes parameters to the 
-    collected statistics hd5 file.
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="2.2.2.-Population-">2.2.2. Population <a name="s_population"></a><a class="anchor-link" href="#2.2.2.-Population-">¶</a></h3><p>The model includes births, ageing, age-specific mortality, and age-specific migration to capture the age distribution of a population over time. It takes inputs of initial population size, initial age distribution, age-specific death rates, annual net birth rates, annual migration rates, and age distribution in the emigrated population to simulate demographic dynamics. We sourced the inputs from Australian Bureau of Statistics and Macro Trends Global to align with Australian population dynamics.</p>
+<h3 id="2.2.2.-Population-">2.2.2. Population <a name="s_population"></a><a class="anchor-link" href="#2.2.2.-Population-">¶</a></h3><p>The population class includes <code>AtRiskDisPopulation(DisPopulation)</code> class as well as   includes births, ageing, age-specific mortality, and age-specific migration to capture the age distribution of a population over time. It takes inputs of initial population size, initial age distribution, age-specific death rates, annual net birth rates, annual migration rates, and age distribution in the emigrated population to simulate demographic dynamics. We sourced the inputs from Australian Bureau of Statistics and Macro Trends Global to align with Australian population dynamics.</p>
 <p>Following scripts are included in population folder:</p>
 <ul>
 <li><a href="../model/population/at_risk_disease_population.py">at_risk_disease_population.py</a>: TODO.</li>
 <li><a href="../model/population/at_risk_varying_disease_population.py">at_risk_varying_disease_population.py</a>: It includes  AtRiskDisPopulation(DisPopulation) class which is the base population class that adds atrisk column to the population table using <code>add_at_risk_column()</code> from <a href="../model/disease/disease_utils.py">disease_utils.py</a>. <code>class AtRiskDisPopulation(DisPopulation)</code> and <code>class DisPopulation(Population)</code> can upload population files stored in <a href="../../../data/saved_checkpoints">saved_checkpoints</a> Folder.</li>
 <li><a href="../model/population/disease_population.py">disease_population.py</a>: TODO.</li>
 <li><a href="../model/population/population.py">population.py</a>: The base population class is located in <a href="../model/population/population.py">population.py</a> which does not include any disease or vaccine related columns.</li>
+<li><a href="../model/population/simulation.py">simulation.py</a>: It inlcudes <code>Simulation(Object)</code> that simulates demographical dynamics of a given population. DisSimulation or AtRiskDisSimulation classes in the disease folder are extended versions of the Simulation class.</li>
 <li><a href="../model/population/utils.py">utils.py</a>: TODO.</li>
 </ul>
 </div>
@@ -7999,44 +7999,107 @@ to individuals pl.dataFrame.
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="2.2.3.-Observers-">2.2.3. Observers <a name="s_observers"></a><a class="anchor-link" href="#2.2.3.-Observers-">¶</a></h3><p>In order to add remove observers the changes must be made to <code>DiseaseModel</code> class in <code>...disease_model.py</code> script. In order to create more observers or edit existing observers, changes must be made in the <a href="../model/observers">observers</a> folder.</p>
 <p>Following scripts are included in population folder:</p>
-<ul>
-<li><p><a href="../model/observers/obs_base.py">obs_base.py</a>: include base Observer class that has creat_storage(), load_storage(), and update() functions.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_by_age_at_risk.py">obs_disease_by_age_at_risk.py</a>: includes DiseaseObserverByAgeAtRisk observer class. It records no of serotype group specific individuals in ipd and cap cases in every age. It also records vaccinated individuals in each age as well as vaccinated individuals in ipd and cap cases.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_by_age_by_product_at_risk.py">obs_disease_by_age_by_product_at_risk.py</a>: includes DiseaseObserverByAgeByProduct observer class. It records no of individuals in each age  based on multiple categories (whether they are infected by given serotype groups, whether they have a disease, whether they were ever vaccinated/vaccinated in last year/vaccinated in last 5 years) and their vaccine name if they are vaccinated.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_by_age_v116.py">obs_disease_by_age_v116.py</a>: includes DiseaseObserverByAge observer class. The only difference of DiseaseObserverByAge observer class from obs_disease_by_age.py is that it also collects v116 specific disease outcomes by age.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_by_age.py">obs_disease_by_age.py</a>: includes DiseaseObserverByAge observer class. It records serotype group specific ipd and cap outcomes by age.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_by_vaccine.py">obs_disease_by_vaccine.py</a>: includes DiseaseObserverByVaccineAtRisk observer class. It records disease outcomes among individuals vaccinated in last year/last 5 years by age.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease_scenarios.py">obs_disease_scenarios.py</a>: includes DiseaseObserver observer class. This is an earlier version of an observer class. It is no longer used.</p>
-</li>
-<li><p><a href="../model/observers/obs_disease.py">obs_disease.py</a>: includes DiseaseObserver observer class. This is an earlier version of an observer class. It is no longer used.</p>
-</li>
-<li><p><a href="../model/observers/obs_pop.py">obs_pop.py</a>: includes PopulationObserver observer class which collects pop size and median age.</p>
-</li>
-<li><p><a href="../model/observers/obs_prevalence_by_age.py">obs_prevalence_by_age.py</a>: includes PrevalenceByAgeObserver observer class which records total individuals, total infected individuals and total infections by age every time step.</p>
-</li>
-<li><p><a href="../model/observers/obs_prevalence_mult_age_groups.py">obs_prevalence_mult_age_groups.py</a>: includes extended PrevalenceByAgeObserver observer class which records total individuals, total infected individuals, fraction of infected individuals in some age groups as well as strain specific infections in pre-defined age groups every time step.</p>
-</li>
-<li><p><a href="../model/observers/obs_prevalence.py">obs_prevalence.py</a>: includes modified PrevalenceByAgeObserver observer class which records total individuals, total infected individuals, fraction of infected individuals in some age groups every time step.</p>
-</li>
-<li><p><a href="../model/observers/obs_vacc_delivered.py">obs_vacc_delivered.py</a>: includes VaccinationDeliveredObserver observer class that records vaccines delivered at every time step based on their type as well as total number of individuals in the population.</p>
-</li>
-<li><p><a href="../model/observers/obs_vacc_efficacy_against_acq.py">obs_vacc_efficacy_against_acq.py</a>: includes VaccinationEffAcquisitionObserver observer class. It records P.vaccinated_acq_pop rows that includes  vaccinated individuals antibody levels, the serotype they are exposed to and whether they get infected or not.</p>
-</li>
-<li><p><a href="../model/observers/obs_vacc_efficacy_against_disease.py">obs_vacc_efficacy_against_disease.py</a>: includes VaccinationEffDiseaseObserver observer class. It records P.vaccinated_disease_pop rows that includes  vaccinated individuals antibody levels, the serotype they are exposed to and whether they get going to develop disease or not. This observer is not used and it needs to be updated as it records exposed strains rather than current infected strain list.</p>
-</li>
-<li><p><a href="../model/observers/obs_vacc_rollout_scenarios.py">obs_vacc_rollout_scenarios.py</a>: includes VaccinationObserver observer class. Given a birth cohort, it records what percentage of the individuals are vaccinated by individual vaccines.</p>
-</li>
-<li><p><a href="../model/observers/obs_vacc_rollout.py">obs_vacc_rollout.py</a>: includes VaccinationObserver observer class. Given a birth cohort, it records what percentage of the individuals are vaccinated by individual vaccines. The only difference from the VaccinationObserver class in obs_vacc_rollout_scenarios.py is the birth cohorts.</p>
-</li>
-<li><p><a href="../model/observers/obs_vaccine_by_age_by_product_at_risk.py">obs_vaccine_by_age_by_product_at_risk.py</a>: includes VaccineObserverByAgeByProduct observer class. Given vaccines, indivdual types (atrsik groups), time of vaccines delivered (ever, last 1 year, last 5 years), disease type (ipd, cap), it records number of individuals by age in each category.</p>
-</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Observer Class</th>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Observer (base class)</strong></td>
+<td><a href="../model/observers/obs_base.py">obs_base.py</a></td>
+<td>Base observer class with <code>create_storage()</code>, <code>load_storage()</code>, and <code>update()</code> functions.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserverByAgeAtRisk</strong></td>
+<td><a href="../model/observers/obs_disease_by_age_at_risk.py">obs_disease_by_age_at_risk.py</a></td>
+<td>Records serotype-group–specific IPD and CAP cases by age, and vaccinated individuals (overall and among IPD/CAP cases).</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserverByAgeByProduct</strong></td>
+<td><a href="../model/observers/obs_disease_by_age_by_product_at_risk.py">obs_disease_by_age_by_product_at_risk.py</a></td>
+<td>Records individuals by age across infection, disease, vaccination history (ever, last 1 year, last 5 years), and vaccine product.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserverByAge (v116 variant)</strong></td>
+<td><a href="../model/observers/obs_disease_by_age_v116.py">obs_disease_by_age_v116.py</a></td>
+<td>Same as <code>obs_disease_by_age.py</code>, but additionally collects <em>v116-specific</em> disease outcomes by age.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserverByAge</strong></td>
+<td><a href="../model/observers/obs_disease_by_age.py">obs_disease_by_age.py</a></td>
+<td>Records serotype-group–specific IPD and CAP outcomes by age.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserverByVaccineAtRisk</strong></td>
+<td><a href="../model/observers/obs_disease_by_vaccine.py">obs_disease_by_vaccine.py</a></td>
+<td>Records disease outcomes among individuals vaccinated in the last year or last 5 years, by age.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserver (legacy)</strong></td>
+<td><a href="../model/observers/obs_disease_scenarios.py">obs_disease_scenarios.py</a></td>
+<td>Older version of a disease observer; no longer used.</td>
+</tr>
+<tr>
+<td><strong>DiseaseObserver (legacy)</strong></td>
+<td><a href="../model/observers/obs_disease.py">obs_disease.py</a></td>
+<td>Earlier, unused version of disease observer.</td>
+</tr>
+<tr>
+<td><strong>PopulationObserver</strong></td>
+<td><a href="../model/observers/obs_pop.py">obs_pop.py</a></td>
+<td>Records population size and median age.</td>
+</tr>
+<tr>
+<td><strong>PrevalenceByAgeObserver</strong></td>
+<td><a href="../model/observers/obs_prevalence_by_age.py">obs_prevalence_by_age.py</a></td>
+<td>Records total individuals, total infected individuals, and total infections by age at every timestep.</td>
+</tr>
+<tr>
+<td><strong>PrevalenceByAgeObserver (extended)</strong></td>
+<td><a href="../model/observers/obs_prevalence_mult_age_groups.py">obs_prevalence_mult_age_groups.py</a></td>
+<td>Records individuals, infected individuals, infection fractions, and strain-specific infections in predefined age groups.</td>
+</tr>
+<tr>
+<td><strong>PrevalenceByAgeObserver (modified)</strong></td>
+<td><a href="../model/observers/obs_prevalence.py">obs_prevalence.py</a></td>
+<td>Records total individuals, total infected individuals, and infection fractions in selected age groups.</td>
+</tr>
+<tr>
+<td><strong>VaccinationDeliveredObserver</strong></td>
+<td><a href="../model/observers/obs_vacc_delivered.py">obs_vacc_delivered.py</a></td>
+<td>Records vaccines delivered each timestep by type and total population size.</td>
+</tr>
+<tr>
+<td><strong>VaccinationEffAcquisitionObserver</strong></td>
+<td><a href="../model/observers/obs_vacc_efficacy_against_acq.py">obs_vacc_efficacy_against_acq.py</a></td>
+<td>Records vaccinated individuals’ antibody levels, exposed serotype, and whether infection occurs (from <code>P.vaccinated_acq_pop</code>).</td>
+</tr>
+<tr>
+<td><strong>VaccinationEffDiseaseObserver</strong></td>
+<td><a href="../model/observers/obs_vacc_efficacy_against_disease.py">obs_vacc_efficacy_against_disease.py</a></td>
+<td>Records vaccinated individuals’ antibody levels, exposed serotype, and disease outcomes (from <code>P.vaccinated_disease_pop</code>). <em>Not used; needs update.</em></td>
+</tr>
+<tr>
+<td><strong>VaccinationObserver (used in scenarios)</strong></td>
+<td><a href="../model/observers/obs_vacc_rollout_scenarios.py">obs_vacc_rollout_scenarios.py</a></td>
+<td>For each birth cohort, records vaccination coverage by vaccine product.</td>
+</tr>
+<tr>
+<td><strong>VaccinationObserver</strong></td>
+<td><a href="../model/observers/obs_vacc_rollout.py">obs_vacc_rollout.py</a></td>
+<td>Same as above but uses different birth cohorts.</td>
+</tr>
+<tr>
+<td><strong>VaccineObserverByAgeByProduct</strong></td>
+<td><a href="../model/observers/obs_vaccine_by_age_by_product_at_risk.py">obs_vaccine_by_age_by_product_at_risk.py</a></td>
+<td>Records age-specific numbers of individuals by vaccine type, at-risk group, time since vaccination (ever/1y/5y), and disease type (IPD, CAP).</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -8075,7 +8138,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="4.-How-to-run-simulations-">4. How to run simulations <a name="run_simulation"></a><a class="anchor-link" href="#4.-How-to-run-simulations-">¶</a></h1><p>Given a parameter set, <code>run_....py</code> documents in <code>run_...</code> folders, takes scripts from the <a href="../model">model</a> folder and simulates carriage and disease in the population. Folder <a href="../run_scenarios">run_scenarios</a> includes scripts that simulates the transmission in non-Indigenous population of Australia where the population is segregated as <em>not-at-risk</em>, <em>Tier 1 at-risk</em> and <em>Tier 2 at-risk</em> individuals.</p>
+<h1 id="4.-Run-an-example-simulation-">4. Run an example simulation <a name="run_simulation"></a><a class="anchor-link" href="#4.-Run-an-example-simulation-">¶</a></h1><p>Given a parameter set, <code>run_....py</code> documents in <code>run_...</code> folders, takes scripts from the <a href="../model">model</a> folder and simulates carriage and disease in the population. Folder <a href="../run_scenarios">run_scenarios</a> includes scripts that simulates the transmission in non-Indigenous population of Australia where the population is segregated as <em>not-at-risk</em>, <em>Tier 1 at-risk</em> and <em>Tier 2 at-risk</em> individuals.</p>
 <h4 id="Running-single-simulation">Running single simulation<a class="anchor-link" href="#Running-single-simulation">¶</a></h4><p>In order to run a single simluation, make sure that <code>run_....py</code> script has the following lines at the end:</p>
 <div class="highlight"><pre><span></span><span class="c1">#run a single simulation among combinations</span>
 <span class="n">new_go_single</span><span class="p">(</span><span class="n">job_inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
@@ -8088,6 +8151,49 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <span class="c1">#run multiple simulations</span>
 <span class="n">results</span> <span class="o">=</span> <span class="n">parq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">new_go_single</span><span class="p">,</span> <span class="n">job_inputs</span><span class="p">,</span> <span class="n">n_proc</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">results</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="References">References<a class="anchor-link" href="#References">¶</a></h1><p>Yildirim, I., Hanage, W. P., Lipsitch, M., Shea, K. M., Stevenson, A., Finkelstein, J., Huang, S. S., Lee, G. M., Kleinman, K., &amp; Pelton, S. I. (2010). Serotype-specific invasive capacity and persistent reduction in invasive pneumococcal disease. <em>Vaccine, 29</em>(2–3), 283–288.</p>
+<p>Hausdorff, W. P., Feikin, D. R., &amp; Klugman, K. P. (2005). Epidemiological differences among pneumococcal serotypes. <em>The Lancet Infectious Diseases, 5</em>(2), 83–93.</p>
+<p>Bertran, M., D’Aeth, J. C., Abdullahi, F., Eletu, S., Andrews, N. J., Ramsay, M. E., … Ladhani, S. N. (2024). Invasive pneumococcal disease 3 years after introduction of a reduced 1+1 infant 13-valent pneumococcal conjugate vaccine schedule in England: A prospective national observational surveillance study. <em>The Lancet Infectious Diseases, 24</em>, 546–556.</p>
+<p>Andrews, N. J., Waight, P. A., Burbidge, P., Pearce, E., Roalfe, L., Zancolli, M., … Goldblatt, D. (2014). Serotype-specific effectiveness and correlates of protection for the 13-valent pneumococcal conjugate vaccine. <em>The Lancet Infectious Diseases, 14</em>(9), 839–846.</p>
+<p>Feng, S., McLellan, J., Pidduck, N., Roberts, N., Higgins, J. P. T., Choi, Y., … Voysey, M. (2024). Immunogenicity and seroefficacy of pneumococcal conjugate vaccines: A systematic review and network meta-analysis. <em>Health Technology Assessment</em>, 1–109.</p>
+<p>Wunrow, H. Y., Bender, R. G., Vongpradith, A., Sirota, S. B., Swetschinski, L. R., … Kyu, H. H. (2023). Global, regional, and national burden of meningitis, 1990–2019. <em>The Lancet Neurology, 22</em>, 685–711.</p>
+<p>Wahl, B., O’Brien, K. L., Greenbaum, A., Majumder, A., Liu, L., Chu, Y., … Knoll, M. D. (2018). Burden of <em>Streptococcus pneumoniae</em> and <em>Haemophilus influenzae</em> type b disease in children in the era of conjugate vaccines. <em>The Lancet Global Health, 6</em>, e744–e757.</p>
+<p>Grant, L. R., Slack, M. P. E., Theilacker, C., Vojicic, J., Dion, S., Reinert, R.-R., Jodar, L., &amp; Gessner, B. D. (2023). Distribution of serotypes causing invasive pneumococcal disease in older adults. <em>Vaccine, 41</em>, 5662–5669.</p>
+<p>Grant, L. R., Slack, M. P. E., Theilacker, C., Vojicic, J., Dion, S., Reinert, R.-R., Jodar, L., &amp; Gessner, B. D. (2023). Distribution of serotypes causing invasive pneumococcal disease in children. <em>Clinical Infectious Diseases, 76</em>, e1062–e1070.</p>
+<p>Musher, D. M., Anderson, R., &amp; Feldman, C. (2022). The remarkable history of pneumococcal vaccination. <em>Pneumonia, 14</em>, 5.</p>
+<p>O’Brien, K. L., Steinhoff, M. C., Edwards, K., Keyserling, H., Thoms, M. L., &amp; Madore, D. (1996). Immunologic priming of young children by pneumococcal conjugate but not polysaccharide vaccines. <em>Pediatric Infectious Disease Journal, 15</em>, 425–430.</p>
+<p>Douglas, R. M., &amp; Miles, H. B. (1984). Vaccination against <em>Streptococcus pneumoniae</em> in childhood: Lack of demonstrable benefit. <em>Journal of Infectious Diseases, 149</em>, 861–869.</p>
+<p>Davies, L. R. L., Cizmeci, D., Guo, W., Luedemann, C., Alexander-Parrish, R., Grant, L., … Alter, G. (2022). Polysaccharide and conjugate vaccines generate distinct humoral responses. <em>Science Translational Medicine, 14</em>, 1–13.</p>
+<p>Moberley, S., Holden, J., Tatham, D. P., &amp; Andrews, R. M. (2013). Vaccines for preventing pneumococcal infection in adults. <em>Cochrane Database of Systematic Reviews, 2013</em>.</p>
+<p>Feemster, K., Buchwald, U. K., Banniettis, N., Joyce, J. G., Velentgas, P., Chapman, T. J., &amp; Yildirim, I. (2024). Immunogenicity of current and next-generation PCVs in children. <em>Open Forum Infectious Diseases, 11</em>, 1–9.</p>
+<p>O’Brien, K. L., Millar, E. V., Zell, E. R., Bronsdon, M., Weatherholtz, R., Reid, R., … Santosham, M. (2007). Effect of conjugate vaccine on nasopharyngeal colonisation. <em>Journal of Infectious Diseases, 196</em>, 1211–1220.</p>
+<p>Melegaro, A., &amp; Edmunds, W. J. (2004). Cost-effectiveness of PCV in England and Wales. <em>Vaccine, 22</em>, 4203–4214.</p>
+<p>De Cao, E., Melegaro, A., Klok, R., &amp; Postma, M. (2014). Optimising assessments of paediatric immunisation with PCV13. <em>PLoS ONE, 9</em>, e89415.</p>
+<p>Wasserman, M., Lucas, A., Jones, D., Wilson, M., Hilton, B., Vyse, A., … Farkouh, R. (2018). Dynamic transmission modelling for infant PCV schedule changes. <em>Epidemiology &amp; Infection, 146</em>, 1797–1806.</p>
+<p>Choi, Y. H., Andrews, N., &amp; Miller, E. (2019). Estimated impact of revising the PCV schedule. <em>PLoS Medicine, 16</em>, e1002845.</p>
+<p>Choi, Y. H., Jit, M., Flasche, S., Gay, N., &amp; Miller, E. (2012). Long-term effects of replacing 7vPCV with 13vPCV. <em>PLoS ONE, 7</em>, e39927.</p>
+<p>Flasche, S., Edmunds, W. J., Miller, E., Goldblatt, D., Robertson, C., &amp; Choi, Y. H. (2013). Specific &amp; non-specific immunity effects on pneumococcal ecology. <em>Proceedings of the Royal Society B, 280</em>.</p>
+<p>Megiddo, I., Klein, E., &amp; Laxminarayan, R. (2018). Economic–epidemiological analysis of PCV introduction. <em>(Journal details truncated in original source)</em>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 </div>
 </div>
 </div>
