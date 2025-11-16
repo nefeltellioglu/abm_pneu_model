@@ -6,9 +6,6 @@ output/*
 output/**
 **/__pycache__
 */__pycache__
-<<<<<<< HEAD
 data/
 data/saved_checkpoints/
-=======
 data/*
->>>>>>> 04743001027ddae280017a05023880feb6c704eb
