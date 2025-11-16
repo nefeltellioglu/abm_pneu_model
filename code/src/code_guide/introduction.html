@@ -7881,6 +7881,67 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </tbody>
 </table>
 <p>Following scripts are included in disease folder:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Class / Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../model/disease/antibody_levels.py">antibody_levels.py</a></td>
+<td>—</td>
+<td>Creates vaccine-induced serotype, vaccine, and dose-specific antibody levels and estimates waning of initial antibody levels.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/disease.py">disease.py</a></td>
+<td><code>Disease</code>, <code>DiseaseModel</code></td>
+<td><code>Disease</code> class is a main input for <code>go_single()</code>. <code>DiseaseModel</code> uses observers from <a href="../model/observers">observers</a> to collect summary statistics.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/at_risk_varying_disease.py">at_risk_varying_disease.py</a></td>
+<td><code>AtRiskDisease</code></td>
+<td>Extends <code>Disease</code> class by including at-risk conditions in disease outcomes. Main functions listed in the table below.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/at_risk_varying_disease_simulation.py">at_risk_varying_disease_simulation.py</a></td>
+<td><code>AtRiskDisSimulation</code></td>
+<td>Simulates disease and demographic dynamics using a disease class and <code>AtRiskDisPopulation</code> as input. Docstring of <code>DisSimulation</code> provided below.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/contact_matrix.py">contact_matrix.py</a></td>
+<td><code>KnownContactMatrix</code></td>
+<td>Generates a contact matrix from a CSV file; used as input to <code>go_single()</code>.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/disease_simulation.py">disease_simulation.py</a></td>
+<td><code>DisSimulation</code></td>
+<td>Simulates disease and demographic dynamics from a disease class; main input to <code>go_single()</code>. Docstring provided below.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/disease_utils.py">disease_utils.py</a></td>
+<td><code>gen_age_structured_pop()</code>, <code>add_at_risk_column()</code></td>
+<td>Helper functions to generate age-structured population and add at-risk columns.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/run.py">run.py</a></td>
+<td><code>go_single()</code></td>
+<td>Simulates disease and demographic dynamics using a disease class, a simulation class, contact matrix, and parameters.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/at_risk_varying_run.py">at_risk_varying_run.py</a></td>
+<td><code>go_single()</code></td>
+<td>Similar to <code>run.py</code> but uses at-risk disease and population classes.</td>
+</tr>
+<tr>
+<td><a href="../model/disease/vaccine_rollout.py">vaccine_rollout.py</a></td>
+<td><code>roll_v116()</code>, <code>roll_v116_maternal()</code>, <code>remove_v116_maternal()</code></td>
+<td>Reduces the size of <code>check_vaccines()</code> by splitting it into subfunctions now included here.</td>
+</tr>
+</tbody>
+</table>
 <ul>
 <li><p><a href="../model/disease/antibody_levels.py">antibody_levels.py</a>: includes creating of vaccine induced serotype, vaccine, and dose specific antibody levels as well as waning estimations of initial antibody levels.</p>
 </li>
@@ -8055,12 +8116,12 @@ to individuals pl.dataFrame.
 <td>Records disease outcomes among individuals vaccinated in the last year or last 5 years, by age.</td>
 </tr>
 <tr>
-<td><strong>DiseaseObserver (legacy)</strong></td>
+<td><strong>DiseaseObserver (unused)</strong></td>
 <td><a href="../model/observers/obs_disease_scenarios.py">obs_disease_scenarios.py</a></td>
 <td>Older version of a disease observer; no longer used.</td>
 </tr>
 <tr>
-<td><strong>DiseaseObserver (legacy)</strong></td>
+<td><strong>DiseaseObserver (unused)</strong></td>
 <td><a href="../model/observers/obs_disease.py">obs_disease.py</a></td>
 <td>Earlier, unused version of disease observer.</td>
 </tr>
