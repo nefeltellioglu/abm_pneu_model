@@ -16,4 +16,4 @@ pip install -e .
 
 ## Code guide
 
-The background, structure of the repository and how to run example scenarios are provided in [introduction.ipnyb](code/src/code_guide/introduction.ipynb) notebook.
+The background for the pathogen burden, need for a novel ABM model, structure of the repository and how to run example scenarios are all described in [introduction.ipynb](code/src/code_guide/introduction.ipynb) Notebook.
