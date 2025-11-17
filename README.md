@@ -16,4 +16,4 @@ pip install -e .
 
 ## Code guide
 
-The background, structure of the repository and how to run example scenarios are provided in [introduction.ipnyb](code/src/code_guide/introduction.ipnyb) notebook.
+The background, structure of the repository and how to run example scenarios are provided in [introduction.ipnyb](code/src/code_guide/introduction.ipynb) notebook.
