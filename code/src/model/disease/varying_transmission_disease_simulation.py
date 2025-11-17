@@ -41,12 +41,11 @@ class VaryingTransDisSimulation(DisSimulation):
 
     """
     def __init__(self, p, disease, rng):
-        super(VaryingTransDisSimulation, self).__init__(p, disease, rng)
-            
         self.disease = disease
         self.rng = rng
         #self.nprng = np.random.RandomState(self.rng.randint(0, 99999999))
-        
+        super(VaryingTransDisSimulation, self).__init__(p, disease, rng)
+            
         create_pop = True
         if create_pop:
             self.create_population()

@@ -16,8 +16,7 @@ from model.observers.obs_prevalence import PrevalenceObserver
 #from model.observers.obs_disease import DiseaseObserver
 from model.observers.obs_vacc_rollout_scenarios import VaccinationObserver
 #from model.observers.obs_disease_scenarios import DiseaseObserver
-#from model.observers.obs_disease_by_age import DiseaseObserverByAge
-from model.observers.obs_disease_by_age_v116 import DiseaseObserverByAge
+from model.observers.obs_disease_by_age import DiseaseObserverByAge
 from model.observers.obs_prevalence_by_age import PrevalenceByAgeObserver
 
 from model.observers.obs_vacc_delivered import VaccinationDeliveredObserver
@@ -73,9 +72,8 @@ if not data_dir.exists():
     raise ValueError('data directory is missing')
 
 knowncmatrix = pd.read_csv(
-    'data/all_contact_matrix_Australia_prem_2017.csv',
-    header=None
-).to_numpy()
+    'data/population/all_contact_matrix_Australia_prem_2017.csv',
+    header=None).to_numpy()
 # (basic usage) run simulation
 # sweep parameters
 # run single simulation

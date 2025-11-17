@@ -12,20 +12,19 @@ p = {
     'prefix': 'output/',
 
     # demographic model parameters
-    'age_distribution': 'age_dist_2002.dat',
-    'initial_death_rates': 'death_rates_2002.dat',
+    'age_distribution': 'population/age_dist_2002.dat',
+    'initial_death_rates': 'population/death_rates_2002.dat',
     'later_death_rates': None,#'death_rates_2008.dat',
     'year_to_change_death_rates' : 6,
-    'birth_rates': 'birth_rates.dat', 
-    'mig_rates': 'migration_rates.dat',
-    'age_distribution_mig': 'age_dist_migration_2018.dat',
+    'birth_rates': 'population/birth_rates.dat', 
+    'mig_rates': 'population/migration_rates.dat',
+    'age_distribution_mig': 'population/age_dist_migration_2018.dat',
     
     
     #disease parameters
-    'strain_list': 'strain_list.dat',
-    'vaccine_list': 'vaccine_list.dat',
-     #'vaccine_list_child_pcv15_adult_pcv13.dat',
-    'initial_cases': 'initialize_infections.dat',
+    'strain_list': 'disease/strain_list.dat',
+    'vaccine_list': 'vaccine_configs/vaccine_list.dat',
+    'initial_cases': 'disease/initialize_infections.dat',
     'duration_of_infection': 30, #days, not used
     'age_specific_duration_of_infections': [72,28,18,17], #days
     
@@ -38,34 +37,22 @@ p = {
     'no_daily_external_strains':2,
     'halt': True,
     'noise_in_strain_distribution': 0.0,
-    "prob_acq_logantibody_scale": 0.05,#0.001,
-    "prob_acq_logantibody_shift": -2.2,#-5.5, #fixed
-    "prob_acq_logantibody_shape": 1,#5, #fixed
+    "prob_acq_logantibody_scale": 5,
+    "prob_acq_logantibody_shift": -2.2, #fixed
+    "prob_acq_logantibody_shape": 1, #fixed
     #waning halflife days
     "waning_halflife_day_adult": 600,
     "waning_halflife_day_child": 125,
     
-    'transmission_coefficient_multipliers': {"pcv7": 1.009,
-                                              "pcv13": 1.006, 
-                                              "ppv23": 0.997, 
+    'transmission_coefficient_multipliers':  {"pcv7": 1.009,
+                                              "pcv13": 1.0063, 
+                                              "ppv23": 0.995, 
                                               "nonppv23": 0.995},
-    
-    
     #disease outcome parameters
-    "prob_dis_logantibody_age_10": [1 / (i * 1000) for i in [0.000589583,
-                                0.000441467,
-                                0.00043756,
-                                0.000636011,
-                                0.000616983,
-                                0.000144194,
-                                0.000112909,
-                                0.000260953,
-                                0.000680057,
-                              0.003370391]], #-> this will be the age component
+    "prob_dis_logantibody_additive": -1.7,
+    "prob_dis_logantibody_adjust": 1250,
     "prob_dis_logantibody_shift": 0, #fixed
     "prob_dis_logantibody_shape": 1.5, #fixed
-    
-    
     "prob_dis_logantibody_age":  [1.6961140331386761,
                                      2.2651749734408235,
                                      2.285400859310723,
@@ -79,20 +66,6 @@ p = {
                                      0.0767014806293988,
                                      0.0015013064377048236], 
     #-> this will be the age component
-    
-    "prob_dis_logantibody_scale_old2" : [0.00016979990399999998,
-                                     6.11873262e-05,
-                                     6.381083333333333e-05,
-                                     7.47948936e-05,
-                                     6.0464333999999996e-05,
-                                     2.523395e-05,
-                                     1.4226534e-05,
-                                     4.5398146911764703e-05,
-                                     0.00013927194726027397,
-                                     0.0006976346962365591,
-                                     0.001657077666295884,
-                                     0.0034513930825496347],
-    
     "prob_dis_logantibody_scale" :[0.00016979990399999998,
                                      6.11873262e-05,
                                      6.381083333333333e-05,
@@ -105,8 +78,7 @@ p = {
                                      0.0005637452090800478,
                                      0.0013104440728360306,
                                      0.00282386706754061],
-    
-                                                
+
     "ipd_fraction_by_age_group": [0.3142857142857143,
                                     0.34146341463414637,
                                     0.3684210526315789,
@@ -119,8 +91,6 @@ p = {
                                     0.073016477,
                                     0.050870022,
                                     0.041065923],
- 
-    
     
     'pop_size': 1_000_000,
     'update_demog': True,
@@ -130,10 +100,10 @@ p = {
     'seed_no': 0,
     't_per_year': 52,
     'logging': False,
-    'years': [10,18],
+    'years': [0,18],
     'record_interval': 1,
     'save_population': True,
     "read_population": True,
     "pop_group": "non_indigenous",
-    "pop_saving_address": "non_indigenous_varying_trans_v116",
+    "pop_saving_address": "saved_checkpoints/non_indigenous_varying_trans_v116",
 }

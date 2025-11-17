@@ -55,14 +55,14 @@ class DisSimulation(Simulation):
     def __init__(self, p, disease, rng):
         super(DisSimulation, self).__init__(p, 
                             h5file=disease.h5file, create_pop=True)
-            
         self.disease = disease
         self.rng = rng
         #self.nprng = np.random.RandomState(self.rng.randint(0, 99999999))
         
         create_pop = True
         if create_pop:
-            self.create_population()
+            self.create_population()  
+        
             
     
         
@@ -160,7 +160,6 @@ class DisSimulation(Simulation):
            #                                 "disease_pop_data", 
            #                                 "seed_%s"%self.p["seed_no"])
             output_fname = os.path.join(self.p['resource_prefix'], 
-                                            "disease_pop_data", 
                                             "%s"%self.p["pop_saving_address"])
             self.P.I = self.P.I.unnest("vaccines")
             self.P.I = self.P.I.with_columns(
@@ -178,23 +177,14 @@ class DisSimulation(Simulation):
                 writer.writerow(["id", "endt1", "endt2"])
                 writer.writerows(self.P.I["n_endTimes"].to_list())
                 
-            """(self.P.I.drop("strain_list", "endTimes", 
-                           "n_strain_list", "n_endTimes")
-            .write_csv(os.path.join(self.p['resource_prefix'], 
-                                            "disease_pop_data", 
-                                            "seed_%s.csv"%self.p["seed_no"]))
-            )"""
+    
             
             (self.P.I.drop("strain_list", "endTimes", 
                            "n_strain_list", "n_endTimes")
             .write_csv(os.path.join("%s.csv"%output_fname
-            #self.p['prefix'],"disease_pop_data", "%s.csv"%self.p["pop_saving_address"]
                              )))
             
-            """from csv import reader as csvreader
-            with open('%s_endTimes.csv'%output_fname, 'r') as fp:
-                reader = csvreader(fp)
-                li = list(reader)"""
+            
             
     def run(self, verbose):
         """

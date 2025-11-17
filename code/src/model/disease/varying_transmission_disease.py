@@ -19,7 +19,7 @@ import polars as pl
 from copy import deepcopy
 from itertools import chain
 
-from .vaccine import create_vaccine_antibody_df, waning_ratio, roll_v116
+from .antibody_levels import create_vaccine_antibody_df, waning_ratio
 from .disease import Disease
 
 class VaryingTransmissionDisease(Disease):
@@ -48,8 +48,6 @@ class VaryingTransmissionDisease(Disease):
         vaccine_fname = os.path.join(p['resource_prefix'],
                                                 p['vaccine_list'])
         
-        self.strains
-        
         #varying transmission rates
         self.transmission_coefficient_multipliers1 = \
             p['transmission_coefficient_multipliers']
@@ -67,9 +65,6 @@ class VaryingTransmissionDisease(Disease):
                     '8', '18F', '33F', '19C', '10D', '27', '33B', '35F', '42',
            '6H', '10F', '38', '16A', '25A', '36', '19B', '10C', '17A', '11A']}
         
-        #print(len(serotype_groups1["nonpcv13"]))
-        #print(len(serotype_groups1["pcv13"]))
-        #print(len(serotype_groups1["pcv7"]))
         
         ppv23_serotypes = ["1", "2", "3", "4", "5", "6B", "7F", "8", "9N",
                            "9V", "10A", "11A", "12F", "14", "15B", "17F", 
@@ -87,9 +82,6 @@ class VaryingTransmissionDisease(Disease):
         
         others = (list((set(self.serotype_groups1["nonpcv13"]) - set(
                                                     ppv23_serotypes))))
-        
-        #non_ppv23_nonpcv13 = list(set(self.serotype_groups1["nonpcv13"]) -\
-        #                                    set( pcv13_ppv23_nonpcv7))
         
         self.serotype_groups1 = { "pcv7": self.serotype_groups1["pcv7"],
                                  "pcv13": self.serotype_groups1["pcv13"],
@@ -117,6 +109,9 @@ class VaryingTransmissionDisease(Disease):
         self.expernal_exposure_prob = p["expernal_exposure_prob"]
         self.no_daily_external_strains = p["no_daily_external_strains"]
         self.noise_in_strain_distribution = p["noise_in_strain_distribution"]
+        self.prob_dis_logantibody_additive = p["prob_dis_logantibody_additive"]
+        self.prob_dis_logantibody_adjust = p["prob_dis_logantibody_adjust"]
+        
         self.prob_acq_logantibody_shape = p["prob_acq_logantibody_shape"]
         self.prob_acq_logantibody_shift = p["prob_acq_logantibody_shift"]
         self.prob_acq_logantibody_scale = p["prob_acq_logantibody_scale"]
@@ -163,18 +158,12 @@ class VaryingTransmissionDisease(Disease):
                                 [3] * (180  +34)), #+ [-1] * 34 ),
             
             ])
-        """self.age1_conversion = pl.DataFrame([
-            pl.Series("age", list(range(1,102))),
-             pl.Series("age_coef", [4] * 4 + [5] * 10 + [6] * 10 + \
-                                   [7] * 25 + [8] * 15 + [9] * 37 
-                       ), #+ [-1] * 34 ),
-             ]) """  
         self.age1_conversion = pl.DataFrame([
             pl.Series("age", list(range(1,102))),
              pl.Series("age_coef", [4] * 4 + [5] * 10 + [6] * 10 + \
                                   [7] * 25 + [8] * 15 + [9] * 10 + [10] * 5 +\
                                        [11] * 22
-                       ), #+ [-1] * 34 ),
+                       ), 
              ])    
         
         for l in open(strain_fname, 'r'):
@@ -203,9 +192,6 @@ class VaryingTransmissionDisease(Disease):
                             self.vaccines[vaccine]["years"][0] - \
                         len(self.vaccines[vaccine]["late_coverage_frac"]) + 1)
             
-            #self.vaccines[vaccine]["antibody_multipliers_next_doses"] = \
-            #    pl.Series(
-            #        self.vaccines[vaccine]["antibody_multipliers_next_doses"])
             self.vaccines[vaccine]["daily_schedule"] = \
                 pl.Series(self.vaccines[vaccine]["daily_schedule"])
             self.vaccines[vaccine]["on_time_coverage_frac"] = \
@@ -221,81 +207,6 @@ class VaryingTransmissionDisease(Disease):
         
         
         #############
-        #disease outcome multipliers
-        self.disease_outcome_multipliers = p["disease_outcome_multipliers"]
-        
-        
-        self.v116_only_strains = pl.Series("v116_only", 
-                 ['15C', '15A', '24F', '31', '35B', '23A', '23B', '16F'])
-        
-        self.vt_strains =  pl.Series("vt_strains", 
-                 ['6B', '11A', '31', '12F', '10A', '3', '19F', '6A', '15A',
-                  '24F', '33F', '35B', '8', '1', '5', '7F', '15B', '20', 
-                  '23B', '2', '19A', '23F', '9V', '9N', '15C', '18C', 
-                  '22F', '14', '23A', '16F', '4', '17F']
-                 )
-        self.nvt_strains = pl.Series("nvt_strains", 
-                 list(set(self.strains.to_list()) - 
-                      set(self.vt_strains.to_list())))
-        
-        no_strains = len(self.v116_only_strains.to_list() + 
-                         self.nvt_strains.to_list() + self.ppv23_nonpcv13)
-        no_ages =  102
-        ages_ppv23 = list(range(5,102))
-        ages_nvt = list(range(0,102))
-        ages_v116 = list(range(0,102))
-        no_ages_ppv23 = len(ages_ppv23)
-        no_ages_nvt = len(ages_nvt)
-        no_ages_v116 = len(ages_v116)
-        given_disease_outcome_multipliers = pl.DataFrame([ 
-            pl.Series("age", 
-                       ages_v116 *  len(self.v116_only_strains.to_list()) + 
-                       ages_nvt *  len(self.nvt_strains.to_list()) + 
-                       ages_ppv23 *  len(self.ppv23_nonpcv13)),
-            pl.Series("strains", 
-                      [ ele for ele in 
-                      self.v116_only_strains.to_list() for i in ages_v116] +
-                     [ ele for ele in 
-                    (self.nvt_strains.to_list()) for i in ages_nvt] +
-                     [ ele for ele in 
-                    (self.ppv23_nonpcv13) for i in ages_ppv23] 
-                      ),
-                     # p["strains_with_higher_disease_outcome"] *\
-                     # sum(no_ages)),
-            pl.Series("multiplier", 
-                      (([self.disease_outcome_multipliers["v116_only"]/2] * 50 +
-                       [self.disease_outcome_multipliers["v116_only"]] * (no_ages_v116 - 50))
-                       * len(self.v116_only_strains.to_list()) +
-                     [self.disease_outcome_multipliers["nvt"]] * no_ages_nvt * len(self.nvt_strains.to_list()) +
-                     [self.disease_outcome_multipliers["ppv23_nonpcv13"]] * no_ages_ppv23 * len(self.ppv23_nonpcv13))
-                      )
-            
-            ]).sort("age", "strains")
-        
-        """
-        for nvt in self.nvt_strains:
-            multiplier = given_disease_outcome_multipliers.filter(pl.col("strains")== nvt)['multiplier'].unique() 
-            
-            if (len(multiplier) != 1 ) or (multiplier[0] != self.disease_outcome_multipliers["nvt"]):
-                print(multiplier)
-        
-        for v116 in self.v116_only_strains:
-            multiplier = given_disease_outcome_multipliers.filter(pl.col("strains")== v116)['multiplier'].unique() 
-            
-            if (len(multiplier) != 1 ) or (multiplier[0] != self.disease_outcome_multipliers["v116_only"]):
-                print(multiplier)
-        """
-        self.disease_outcome_multipliers = pl.DataFrame([
-            pl.Series("age", list(range(0,102)) * len(self.strains)),
-            pl.Series("strains", self.strains.to_list() * 102),
-            pl.Series("multiplier", [1] * len(self.strains) * 102 )
-            ])
-        self.disease_outcome_multipliers = \
-            (self.disease_outcome_multipliers.update(
-            given_disease_outcome_multipliers, on = ["age", "strains"], 
-            how= "left"))
-        
-        
         
     def store_params(self, p):
         """
@@ -493,10 +404,7 @@ class VaryingTransmissionDisease(Disease):
                     
                 i += 1
         
-        #foi =  [self.transmission_coef *\
-        #        sum([x * y for x, y in zip(self.foi["inf_fraction"],row)])\
-        #        for row in self.cmatrix.C]
-            
+           
         return pl.Series(name = "prob_infection",
             values = [(1 - np.exp(-cur_foi)) for cur_foi in foi])
         
@@ -637,28 +545,6 @@ class VaryingTransmissionDisease(Disease):
                 )
             
             
-             """
-             #two alternative way to introduce noise
-             self.strain_distribution = (self.strain_distribution
-                           .with_columns(
-                               (pl.col("fraction") * (1 -
-                        rng.random(size=self.strain_distribution.height) * \
-                            self.noise_in_strain_distribution))
-                ).with_columns(
-                    pl.col("fraction") * 1 / pl.col("fraction").sum())
-                ) 
-             
-             self.strain_distribution = (self.strain_distribution
-                          .with_columns(
-                              (pl.col("fraction") * (1 - \
-                            rng.permutation((np.arange(0.001,1, 
-                                    1/self.strain_distribution.height))) * \
-                                   self.noise_in_strain_distribution))
-               ).with_columns(
-                   pl.col("fraction") * 1 / pl.col("fraction").sum())
-               )  
-             """
-             
              self.strain_distribution = (self.strain_distribution
                            .with_columns(
                                (pl.col("fraction") * (1 -
@@ -735,39 +621,13 @@ class VaryingTransmissionDisease(Disease):
         cur_year = day // 364 
         cur_day_in_year = day % 364
         period = day / t
-        """#remove adult vaccinations after year 19
-        if cur_year == 18 and cur_day_in_year == 0:
-            vacc_adults = (
-                P.I.filter((pl.col("age")
-                    .is_between(65,101)
-                    
-                    ) & (
-                      pl.col("vaccines").struct.field("no_of_doses") > 1  
-                        ))
-                   .select(["id", "vaccines"])
-            )
-            if vacc_adults.height:             
-                vacc_adults = vacc_adults.with_columns(
-                    vaccines = pl.struct(no_of_doses = pl.lit(0), 
-                                     on_time = pl.lit(0).cast(pl.Int64),
-                            vaccine_type = pl.lit("").cast(pl.Utf8),
-                            final_vaccine_time = \
-                                    pl.Series('final_vaccine_time', 
-                            [None] * vacc_adults.height, dtype = pl.Int32)))
-                    
-                P.I = P.I.update(vacc_adults, on= "id", how="left")"""
         
         for vaccine, value in self.vaccines.items():
             #vaccine, value = list(self.vaccines.items())[0]
             #vacc_rollout_year = 0
             #if day > 364 * 2:
             #    print("here")
-            if (vaccine == "V116_adult") & \
-                (value["years"][0] <= cur_year <= value["years"][1]):
-                    P = roll_v116(P, vaccine, value, t, day, 
-                              t_per_year, self.vaccines, rng)
-                
-            elif value["years"][0] <= cur_year <= value["years"][1]:
+           if value["years"][0] <= cur_year <= value["years"][1]:
                 vacc_rollout_year = cur_year - value["years"][0]
                 on_time_coverage = value["on_time_coverage_frac"][\
                                 vacc_rollout_year]
@@ -789,13 +649,7 @@ class VaryingTransmissionDisease(Disease):
                         vacc_age_group.filter(
                             (pl.col("vaccines").struct.field("no_of_doses")
                                  < len(value["daily_schedule"]))
-                                         ))
-                    """if not vacc_target_group.height:
-                        on_time_coverage = on_time_coverage * (
-                            vacc_age_group.height / vacc_target_group.height)
-                        late_coverage = late_coverage * (
-                            vacc_age_group.height / vacc_target_group.height)
-                        """
+                    
                     #on time first dose
                     on_time_first_vacc = (vacc_target_group.filter(
                     (pl.col("age_days") == value["daily_schedule"][0]) &
@@ -931,12 +785,6 @@ class VaryingTransmissionDisease(Disease):
                         pl.struct(
                         (pl.col("vaccines").struct.field("no_of_doses")),
                         
-                        #pl.Series("on_time",values = -1 * (
-                        #    day + \
-                        #((rng.randint((value["late_vacc_age"] * t_per_year - \
-                        #    value["daily_schedule"][-1] / period), 
-                        # size = late_first_vacc.height) * period))),
-                        #        dtype = pl.Int64),
                         pl.Series("on_time",values = -1 * (
                             day + \
                         (((rng.exponential(16, 
@@ -994,10 +842,6 @@ class VaryingTransmissionDisease(Disease):
                 
                 cont_vacc_target_group = (cont_vacc_target_group.filter(
                     (
-                     #catch up vaccination that tick
-                     #(pl.col("random") > \
-                     #             late_coverage / t_per_year) |\
-                    #(pl.col("id").is_in(on_time_first_vacc["id"]))
                      (pl.col("vaccines").struct.field("on_time") != -day) |
                    (pl.col("vaccines").struct.field("vaccine_type")
                     .is_in([vaccine#, value["previous_vacc"]
@@ -1032,22 +876,7 @@ class VaryingTransmissionDisease(Disease):
                             ).alias("vaccines")
                         
                         ))
-                    """
-                        #on time part alternatives
-                        
-                        #(pl.col("vaccines").struct.field("on_time")),
-                        
-                        (-1 * (
-                            day + \
-                                current_daily_schedules.take(
-                    late_vacc["vaccines"].struct.field("no_of_doses") -
-                    len(self.vaccines[prev_vacc]["daily_schedule"]) + 1)
-                          - current_daily_schedules.take(
-                    late_vacc["vaccines"].struct.field("no_of_doses") -
-                        len(self.vaccines[prev_vacc]["daily_schedule"]))
-                                        
-                           )).cast(pl.Int64).alias("on_time"),
-                        """
+                    
                 else:
                     late_vacc = (late_vacc.with_columns(
                         (pl.lit(rng.rand(late_vacc.height))
@@ -1069,8 +898,6 @@ class VaryingTransmissionDisease(Disease):
                              ).alias("vaccines")
                         
                         ))
-                #print(late_vacc)  
-                
                 #update random column
                 cont_vacc_target_group = cont_vacc_target_group.with_columns(
                      (pl.lit(rng.rand(cont_vacc_target_group.height))
@@ -1093,26 +920,29 @@ class VaryingTransmissionDisease(Disease):
                            .drop(["no_of_doses",
                                             "on_time", "vaccine_type", 
                                             "final_vaccine_time"]))
-                """
-                updated_target_group = pl.concat([on_time_first_vacc, 
-                                                late_first_vacc,
-                                            on_time_following_vacc,
-                                            late_vacc,
-                                            cont_vacc_target_group])
                 
-                updated_target_group.filter(
-                pl.col("vaccines").struct.field("on_time") < 0)["vaccines"]"""
-                #P.I = P.I.update(updated_target_group, on="id", how="left") 
-                #P.I.filter(pl.col("id") ==rid)["on_time"]
-                #print(P.I["vaccines"].struct.schema)
-                
-                """ (P.I.filter(pl.col("vaccines")
-                        .struct.field("on_time") < 0)["vaccines"])
-                
-                (P.I.update(updated_target_group, on="id", how="left")
-                .filter(pl.col("vaccines")
-                        .struct.field("on_time") < 0)["vaccines"])"""
+    def check_recoveries(self, t, day, P, rng):
         
+        recovered = (
+            P.I.filter((pl.col("endTimes").list.eval(pl.element()
+                            .filter(pl.element() <= day))).list.lengths() > 0)
+            .select(["id", "strain_list", "endTimes", "no_of_strains"])
+        )
+
+        recovered = (
+                    recovered.with_columns(
+                    (pl.col("endTimes").list.eval(pl.element()
+                             .filter(pl.element() > day))),
+                    (pl.col("strain_list").list.eval(pl.element()).list
+                     .take(pl.col("endTimes").list
+                .eval((pl.element() > day).arg_true()))),
+                   ).with_columns(
+                       (((pl.col("strain_list").list.lengths()))
+                         .cast(pl.Int32).alias("no_of_strains"))))
+                       
+        P.I = P.I.update(recovered, on="id", how="left")
+        return P
+            
  
         
     def check_exposure(self, t, day, P, rng):
@@ -1133,10 +963,7 @@ class VaryingTransmissionDisease(Disease):
                                     p = self.strain_distribution["fraction"],
                                               size = len(P.I))]
              )).sort("random", "no_of_strains", "age_group", descending=False)
-        
-        
-                
-        
+
         #identify individuals that are going to be infected by exposed strains
         P.I = (P.I.with_columns(
                    (  pl.col("random") <= (\
@@ -1152,35 +979,7 @@ class VaryingTransmissionDisease(Disease):
                    (pl.lit(rng.rand(P.I.height)).alias("random")),
                    ))
         
-        
-        
-        recovered = (
-            P.I.filter((pl.col("endTimes").list.eval(pl.element()
-                            .filter(pl.element() <= day))).list.lengths() > 0)
-            .select(["id", "strain_list", "endTimes", "no_of_strains"])
-        )
-        
-       
-        
-        recovered = (
-                    recovered.with_columns(
-                    (pl.col("endTimes").list.eval(pl.element()
-                             .filter(pl.element() > day))),
-                    (pl.col("strain_list").list.eval(pl.element()).list
-                     .take(pl.col("endTimes").list
-                .eval((pl.element() > day).arg_true()))),
-                   ).with_columns(
-                       (((pl.col("strain_list").list.lengths()))
-                         .cast(pl.Int32).alias("no_of_strains"))))
-                       #.filter(pl.col("endTimesIndexes").list.lengths() > 0)
-                    
-        P.I = P.I.update(recovered, on="id", how="left")
-        
-        
-        
-        
-        
-                                
+        P = self.check_recoveries(t, day, P, rng)
                                 
         #add infected strains to "strain_list" and add endTime for them       
         infected = (
@@ -1213,32 +1012,6 @@ class VaryingTransmissionDisease(Disease):
                                 [will_infected, will_infected_ppv23],\
                                       rechunk=True, how = 'diagonal')
             
-            """if possibly_infected.height:
-                t = 104 + 52 * 1
-                day = t * 7
-                possibly_infected2 = possibly_infected
-                possibly_infected = possibly_infected.with_columns(pl.Series('vaccines',
-                    [#{'no_of_doses': 3, 'on_time': 1, 'vaccine_type': 'pcv7', 'final_vaccine_time': 728 },
-                    {'no_of_doses': 3, 'on_time': 1, 'vaccine_type': 'pcv7', 'final_vaccine_time': 728},
-                    {'no_of_doses': 3, 'on_time': 1, 'vaccine_type': 'pcv13_30', 'final_vaccine_time': 728},
-                    ]
-                    
-                    ))
-                possibly_infected = possibly_infected.with_columns(
-                    pl.struct(possibly_infected["vaccines"].struct["no_of_doses"].cast(pl.Int32),
-                              possibly_infected["vaccines"].struct["on_time"],
-                              possibly_infected["vaccines"].struct["vaccine_type"],
-                              possibly_infected["vaccines"].struct["final_vaccine_time"].cast(pl.Int32),
-                              ).alias("vaccines"),
-                    #pl.lit("9V").alias("exposed_strains")
-                    )
-                
-                #exposed_strains = ["14"] #high
-                #9V low
-                print("Here")
-                print(possibly_infected)
-                print(self.vaccines['pcv7']['serotypes'])
-                possibly_infected = possibly_infected2"""
                 
             possibly_infected = possibly_infected.join(
                 self.vaccine_antibody_df, 
@@ -1275,12 +1048,6 @@ class VaryingTransmissionDisease(Disease):
               ))
                 ])
             
-            """log_antibodies = log_antibodies.with_columns(
-                pl.when(pl.col("meanlog") > -9)
-                .then( (pl.col("log_antibodies") + 9) * \
-                      (pl.col("waning_ratio")) - 9)
-                .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
-                )["waning_log_antibodies"]"""
                            
             log_antibodies = log_antibodies.with_columns(
                 pl.when(pl.col("meanlog") > -9)
@@ -1290,16 +1057,11 @@ class VaryingTransmissionDisease(Disease):
                 )["waning_log_antibodies"]  
             
             
-            #np.mean(lognorm.rvs([1],loc=0, 
-            #scale=np.exp(1), size=1000000, random_state=None))
-            
             
             prob_of_transmission = ( 1 / \
                             (1 + self.prob_acq_logantibody_scale * \
                             np.exp( self.prob_acq_logantibody_shape * \
                           (log_antibodies - self.prob_acq_logantibody_shift))))  
-            #prob_of_transmission = (prob_of_transmission *
-            #                            (1 / prob_of_transmission.max()))
             
             P.vaccinated_acq_pop = (possibly_infected.with_columns(
                prob_of_transmission.alias("rel_prob_transmission"),
@@ -1338,9 +1100,6 @@ class VaryingTransmissionDisease(Disease):
         will_infected = self.generate_duration_of_infection(
                         day, will_infected, rng)
         
-        #print(will_infected.filter(pl.col("age") == 0)["exp_random"].mean()) 
-        #print(will_infected.filter(pl.col("age") > 18)["exp_random"].mean()) 
-        
         will_infected = (will_infected.with_columns(
                     (pl.col("strain_list").list
                      .concat(pl.col("exposed_strains"))),
@@ -1356,7 +1115,6 @@ class VaryingTransmissionDisease(Disease):
             print("pop size has changed")
             
         will_infected_size = will_infected.height
-        #will_infected = self.check_disease(t, day, P, will_infected, rng)
         
         if will_infected_size != will_infected.height:
             print("will_infected size has changed after checking disease")
@@ -1377,19 +1135,11 @@ class VaryingTransmissionDisease(Disease):
         
         if pop_size != P.I.height:
             print("pop size has changed after check the disease")
-        
-        #et = time.time()
-        #print(et - st)
-        
-        
-        
+
         return []
 
     def check_disease(self,t,day, P, infected, rng):
         
-        #cur_disease_pop = infected.sample(3).with_columns(
-        #    pl.Series("disease", ["ipd", "cap", "ipd"])
-        #    )
         initial_inf = infected
         #infected = initial_inf
         initial_len = infected.height
@@ -1403,45 +1153,15 @@ class VaryingTransmissionDisease(Disease):
             how="left").drop("vaccine_type","no_of_doses")
         
         
-        
-        
-        """
-            self.vaccine_antibody_df["age"].unique()
-            self.vaccine_antibody_df.with_columns(
-                pl.arange(pl.col("age").list.get(0),
-                          pl.col("age").list.get(1)).list()
-                .over(pl.col("age")).alias("age_list"))
-            
-            
-            pl.arange(self.vaccine_antibody_df["age"].list.get(0),
-                      self.vaccine_antibody_df["age"].list.get(1))
-            .list().over(self.vaccine_antibody_df["age"])
-            
-        """
-       
-        
-            
-        #infected = infected.with_columns((pl.when(pl.col("age") > 64)
-        #                                .then(13 + 4)
-        #                .otherwise(4 + pl.col("age") // 5)).alias("age_coef"))
         infected = infected.join(self.age_0_conversion, on= ["age", "age_days"],
                                    how="left")
-        """infected = infected.join(self.age_0_conversion,
-                        on= ["age", "age_days"],how="left").with_columns(
-                                (pl.when(pl.col("age_coef").is_null())
-                                .then(pl.col("age")+4)
-                                .otherwise("age_coef")).alias("age_coef")
-                                )"""
-                                   
         
         infected = (infected.update(self.age1_conversion, 
                 on= ["age"], how="left"))
         
         infected = infected.filter(pl.col("age_coef") >= 0)
         
-        infected = infected.join(self.disease_outcome_multipliers,
-                                 left_on = ["age","exposed_strains"],
-                                 right_on = ['age', 'strains'])
+        
         #group them based on vaccine received
         infected_novacc = infected.filter(
                     pl.col("vaccines").struct.field("no_of_doses") == 0)
@@ -1482,23 +1202,6 @@ class VaryingTransmissionDisease(Disease):
                       [infected_novacc, infected_vacc_ppv23_not_protected],\
                                   rechunk=True, how = 'diagonal')
         
-            
-        """if (infected.filter(
-                    pl.col("vaccines").struct.field("vaccine_type") == 
-                    "ppsv23_adult").height > 0):
-            print("here")
-            print(infected.join(self.vaccine_antibody_df, 
-                left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                pl.col("vaccines").struct.field("no_of_doses"),
-                pl.col("exposed_strains")],
-                right_on = ["vaccine_type","no_of_doses", 
-                            "exposed_strains"],
-                how="left").drop("vaccine_type","no_of_doses").filter(
-                        (pl.col("vaccines").struct.field("vaccine_type") == 
-                        "ppsv23_adult") & (pl.col("exposed_strains").
-                is_in(self.vaccines["ppsv23_adult"]["serotypes"]))))"""
-        
-        
         log_antibodies_vacc = pl.DataFrame([
             pl.Series("meanlog" , infected_vacc["meanlog"]),
             pl.Series("log_antibodies" ,lognorm.ppf(infected_vacc["quantile"], 
@@ -1522,16 +1225,6 @@ class VaryingTransmissionDisease(Disease):
                 ])
         
         
-        """log_antibodies_vacc = log_antibodies_vacc.with_columns(
-            pl.when(pl.col("meanlog") > -9)
-            .then( (pl.col("log_antibodies") + 9) * \
-                  (pl.col("waning_ratio")) - 9)
-            .otherwise(pl.col("meanlog")).alias("waning_log_antibodies")
-            )["waning_log_antibodies"]"""
-        
-        
-        
-                       
         log_antibodies_vacc = log_antibodies_vacc.with_columns(
             pl.when(pl.col("meanlog") > -9)
             .then( np.log((pl.col("antibodies") * 
@@ -1540,23 +1233,6 @@ class VaryingTransmissionDisease(Disease):
             )["waning_log_antibodies"]  
         
         
-        
-        #np.mean(lognorm.rvs([1],loc=0, 
-        #scale=np.exp(1), size=1000000, random_state=None))
-        
-        
-        """
-        
-        log_antibodies_vacc = lognorm.ppf(infected_vacc["quantile"] * (
-            waning_ratio(
-            infected_vacc["vaccines"].struct.field("vaccine_type"), 
-            day, 
-          infected_vacc["vaccines"].struct.field("final_vaccine_time"),
-          self.waning_halflife_day_adult,self.waning_halflife_day_child)
-                ),  infected_vacc["sdlog"], 
-                    loc=infected_vacc["meanlog"],
-                    scale=1,
-                    )"""
         log_antibodies_novacc = np.array([-9] * len(infected_novacc))
         
         
@@ -1567,22 +1243,12 @@ class VaryingTransmissionDisease(Disease):
                     np.exp( self.prob_dis_logantibody_shape * \
                    (log_antibodies_vacc - 
                     #self.prob_dis_logantibody_shift
-                    -1.7 + 1250 *\
+                    self.prob_dis_logantibody_additive +
+                    self.prob_dis_logantibody_adjust *\
                    self.prob_dis_logantibody_scale[infected_vacc["age_coef"]]
                    
                     ))))
         
-        """prob_of_disease_vacc = ( 1 / ( 1 + \
-                self.prob_dis_logantibody_age[infected_vacc["age_coef"]] * \
-                    np.exp( self.prob_dis_logantibody_shape * \
-                   (log_antibodies_vacc - self.prob_dis_logantibody_shift))))"""
-        
-        #if len(prob_of_disease_vacc):
-        #    print("here")
-        
-        #    prob_of_disease_vacc = (prob_of_disease_vacc *
-        #                            (self.prob_dis_logantibody_scale / \
-        #                                     prob_of_disease_vacc.max()))
         
         prob_of_disease_novacc = ( 
          self.prob_dis_logantibody_scale[infected_novacc["age_coef"]] / ( 1 + \
@@ -1590,32 +1256,19 @@ class VaryingTransmissionDisease(Disease):
                     np.exp( self.prob_dis_logantibody_shape * \
                    (log_antibodies_novacc - 
                     #self.prob_dis_logantibody_shift
-                    -1.7 + 1250 *\
+                    self.prob_dis_logantibody_additive +
+                    self.prob_dis_logantibody_adjust *\
                    self.prob_dis_logantibody_scale[infected_novacc["age_coef"]]
                    ))))
-        """prob_of_disease_novacc = ( 1 / ( 1 + \
-                self.prob_dis_logantibody_age[infected_novacc["age_coef"]] * \
-                    np.exp( self.prob_dis_logantibody_shape * \
-                   (log_antibodies_novacc - self.prob_dis_logantibody_shift))))"""
-        
-        #if len(prob_of_disease_novacc):
-        #    print("Here")
-            
-        #if len(prob_of_disease_novacc):
-        #    prob_of_disease_novacc = (prob_of_disease_novacc *
-        #                            (self.prob_dis_logantibody_scale / \
-        #                                     prob_of_disease_novacc.max()))
-        
-        
-           
+         
         cur_disease_pop_vacc = infected_vacc.filter(
-            (pl.col("random") <= (prob_of_disease_vacc * pl.col("multiplier"))
+            (pl.col("random") <= (prob_of_disease_vacc )
               ))
         #P.vaccinated_disease_po
         P.vaccinated_disease_pop = (infected_vacc.with_columns(
             prob_of_disease_vacc,
             log_antibodies_vacc,
-            (pl.col("random") <= prob_of_disease_vacc * pl.col("multiplier")
+            (pl.col("random") <= prob_of_disease_vacc
               ).alias("will_develop_disease")
             )
         .filter(
@@ -1628,7 +1281,7 @@ class VaryingTransmissionDisease(Disease):
         
         
         cur_disease_pop_novacc = infected_novacc.filter(
-          (pl.col("random") <= (prob_of_disease_novacc * pl.col("multiplier"))
+          (pl.col("random") <= (prob_of_disease_novacc)
               ))
         
         infected_novacc_ppv23 = infected_novacc.filter(
@@ -1677,19 +1330,6 @@ class VaryingTransmissionDisease(Disease):
                                      cur_disease_just_cap],
                                     how = 'diagonal')    
         
-        
-        
-        """cur_disease_pop = (cur_disease_pop.with_columns(
-                        (pl.lit(rng.rand(cur_disease_pop.height))
-                         .alias("random")),
-                        ).with_columns(
-                 pl.when(pl.col("random") <= (self.ipd_fraction_by_age_group[
-                     cur_disease_pop["age_coef"]])
-                          )
-                 .then("ipd")
-                 .otherwise("cap").alias("disease") 
-                             ))"""
-        
         P.vaccinated_disease_pop = (P.vaccinated_disease_pop
                                 .join(cur_disease_pop.select("id", "disease"),
                                       on="id", how= "left"))
@@ -1704,7 +1344,7 @@ class VaryingTransmissionDisease(Disease):
         infected = infected.with_columns(
                         (pl.lit(rng.rand(infected.height))
                          .alias("random"))).drop("age_coef", "meanlog",
-                                                 "sdlog", "multiplier")
+                                                 "sdlog")
         
         
         if (infected.height != initial_len) or \
@@ -1774,57 +1414,7 @@ class VaryingTransmissionDisease(Disease):
         infected = (infected.with_columns(
                     pl.lit(random_dur_of_infection).alias("exp_random"))
                     .drop("mean_dur_of_infection"))
-        """
-        import matplotlib.pyplot as plt
-
-        ages = pl.DataFrame([
-            pl.Series("age",rng.choice(range(0,100), 100000))])
-        ages = ages.join(self.age_specific_duration_of_infections, 
-                                 on="age", how="left")  
-        random_dur_of_infection = rng.exponential(
-            ages["mean_dur_of_infection"])
-        ages = (ages.with_columns(
-                    pl.lit(random_dur_of_infection).alias("exp_random"))
-                    )
-        median_dur = (ages.group_by("age").agg(pl.col("exp_random").median())
-                        .sort("age"))
         
-        #plotting antibody prob of transmission
-        figsize=(7,3.5)#no in x axis, no in yaxis
-        fig, ax = plt.subplots(figsize=figsize)
-        
-        
-        ax.plot(ages["age"].to_list(), 
-                    ages["exp_random"].to_list(), "o", markersize=2)
-        ax.plot(median_dur["age"].to_list(), 
-                    median_dur["exp_random"].to_list(),
-                    "-", color="black", label="Median", lw=2)
-        ax.set_xlabel('Age')
-        ax.set_ylabel('Duration of Infection (days)')
-        ax.legend()
-        fig.savefig(os.path.join("output/", 
-                  'dur_of_infection.pdf'),
-                  bbox_inches = "tight",dpi=300)
-        
-           
-                
-        ax.plot(log_antibodies,
-                 prob_of_transmission,
-                 #color = "tab:blue"
-                 label = "coefficient: %s"%age_logantibody_acq
-                 )
-        #plt.vlines(x=0,ymin=0, ymax= 1)
-        ax.set_xlabel('Age')
-        ax.set_ylabel('Duration of Infection')
-        ax.legend()
-        prob_of_transmission[0]
-        prob_of_transmission[-1]
-        
-        fig.savefig(os.path.join(output_directory, 
-                  'prob_of_acq.pdf'),
-                  bbox_inches = "tight",dpi=300)
-        
-        """    
         return infected
        
         
