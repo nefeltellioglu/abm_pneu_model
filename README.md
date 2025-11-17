@@ -1,4 +1,4 @@
-# Individual-based pneumococcal transmission model
+# Agent-based pneumococcal transmission model
 
 ## Installation
 
@@ -14,8 +14,6 @@ pip install -e .
 ```
 
 
-## A simple example
+## Code guide
 
-
-
-## Code structure
+The background, structure of the repository and how to run example scenarios are provided in [introduction.ipnyb](code/src/code_guide/introduction.ipnyb) notebook.
