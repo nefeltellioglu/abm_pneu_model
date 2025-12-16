@@ -7834,14 +7834,43 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="3.1.1.-Disease-">3.1.1. Disease <a name="s_disease"></a><a class="anchor-link" href="#3.1.1.-Disease-">¶</a></h3><p>In this section, we describe the classes included in the disease folder. We then outline each Python script in the folder and highlight the main functions of the disease classes that are useful for understanding how the disease is simulated.</p>
 <p>Following classes are included in different scripts in disease folder:</p>
-<p>Table: List of classes in disease folder
-| Class Name        | Script | Description |
-|----------------------|-------------|-------------|
-| <code>Disease(object)</code>| <a href="../model/disease/disease.py">disease.py</a> | Class to keep functions to simulate multi-strain pathogen transmission in a population with age structure. The list of main functions are provided in the following table. |
-| <code>| </code>Disease(object)<code>or</code>VaryingTransmissionDisease(Disease)<code> | [disease.py](../model/disease/disease.py) or  [varying_transmission_disease.py](../model/disease/varying_transmission_disease.py) |Keeps functions to simulate multi-strain pathogen transmission in a population with age structure.  | (Disease)</code>| <a href="../model/disease/varying_transmission_disease.py">varying_transmission_disease.py</a> | The only difference from Disease class above is that it includes serotype-specific transmission multipliers in serotype transmission. |
-| <code>DisSimulation(Simulation)</code>| <a href="../model/disease/disease_simulation.py">disease_simulation.py</a> | Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics. |
-| <code>VaryingTransDisSimulation(DisSimulation)</code>| <a href="../model/disease/varying_transmission_disease_simulation.py">varying_transmission_disease_simulation.py</a> | Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics. The demographical updates include births, deaths, aging, immigration. It makes the demographical and disease related updates in DisPopulation class object. In _main_loop(), it updated demography (if True) and disease transmission and save the population (if True) when the simulation ends. Currently population is saved in three different csv files due to the nested struct columns of list of strains (_strain_list.csv) and corresponding time until clearance (_endList.csv) and the rest of the columns. This saving section can be later updated by using write_parquet() function of polars library which can write nested columns into the same file. The only downside would be that the saved parquet files cannot be opened by excel for an easy review of the dataset.|
-| <code>KnownContactMatrix(object)</code>| <a href="../model/disease/contact_matrix.py">contact_matrix.py</a> | Contact matrix class that generates a matrix class from a given matrix csv file. KnownContactMatrix class is then given as an input to go_single() function |</p>
+<p>Table: List of classes in disease folder</p>
+<table>
+<thead>
+<tr>
+<th>Class Name</th>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Disease(object)</code></td>
+<td><a href="../model/disease/disease.py">disease.py</a></td>
+<td>Class to keep functions to simulate multi-strain pathogen transmission in a population with age structure. The list of main functions are provided in the following table.</td>
+</tr>
+<tr>
+<td><code>VaryingTransmissionDisease(Disease)</code></td>
+<td><a href="../model/disease/varying_transmission_disease.py">varying_transmission_disease.py</a></td>
+<td>Keeps functions to simulate multi-strain pathogen transmission in a population with age structure. The only difference from Disease class above is that it includes serotype-specific transmission multipliers in serotype transmission.</td>
+</tr>
+<tr>
+<td><code>DisSimulation(Simulation)</code></td>
+<td><a href="../model/disease/disease_simulation.py">disease_simulation.py</a></td>
+<td>Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics.</td>
+</tr>
+<tr>
+<td><code>VaryingTransDisSimulation(DisSimulation)</code></td>
+<td><a href="../model/disease/varying_transmission_disease_simulation.py">varying_transmission_disease_simulation.py</a></td>
+<td>Simluation class that takes a disease class as an input and simulates both disease and demographical dynamics. The demographical updates include births, deaths, aging, immigration. It makes the demographical and disease related updates in DisPopulation class object. In _main_loop(), it updated demography (if True) and disease transmission and save the population (if True) when the simulation ends. Currently population is saved in three different csv files due to the nested struct columns of list of strains (_strain_list.csv) and corresponding time until clearance (_endList.csv) and the rest of the columns. This saving section can be later updated by using write_parquet() function of polars library which can write nested columns into the same file. The only downside would be that the saved parquet files cannot be opened by excel for an easy review of the dataset.</td>
+</tr>
+<tr>
+<td><code>KnownContactMatrix(object)</code></td>
+<td><a href="../model/disease/contact_matrix.py">contact_matrix.py</a></td>
+<td>Contact matrix class that generates a matrix class from a given matrix csv file. KnownContactMatrix class is then given as an input to go_single() function</td>
+</tr>
+</tbody>
+</table>
 <p>Following scripts are included in disease folder:</p>
 <table>
 <thead>
