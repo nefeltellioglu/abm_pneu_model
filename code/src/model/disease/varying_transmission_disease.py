@@ -1414,16 +1414,13 @@ class VaryingTransmissionDisease(Disease):
         infected = (infected.with_columns(
                     pl.lit(random_dur_of_infection).alias("exp_random"))
                     .drop("mean_dur_of_infection"))
-        
+
         return infected
-       
-        
-        
+
     def update_ind_states(self, t, day, P):
         """
         Update disease status of all individuals.
         Returns a list of newly infectious ('symptomatic' individuals)
-        
         """
         
         new_I = P.I.filter(pl.col("will_infected"))

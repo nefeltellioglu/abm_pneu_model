@@ -52,9 +52,9 @@ if __name__ == "__main__":
     p['read_population'] = False
     p['save_population'] = True
     #population reading filename used only if read_population == True
-    p["pop_group"] = "non_indigenous_varying_trans_v116_year_0"
+    p["pop_group"] = "saved_checkpoints/non_indigenous_varying_trans_year_0"
     #population saving filename used only if save_population == True
-    p["pop_saving_address"] = "non_indigenous_varying_trans_v116_year_18_startfrom2002"
+    p["pop_saving_address"] = "saved_checkpoints/non_indigenous_varying_trans_year_18_startfrom2002"
     #vaccine rollout details
     p['vaccine_list'] =  "vaccine_configs/vaccine_list.dat"
     p['num_runs'] = 100
