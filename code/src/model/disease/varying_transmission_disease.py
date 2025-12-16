@@ -648,7 +648,7 @@ class VaryingTransmissionDisease(Disease):
                     vacc_target_group = (
                         vacc_age_group.filter(
                             (pl.col("vaccines").struct.field("no_of_doses")
-                                 < len(value["daily_schedule"]))
+                                 < len(value["daily_schedule"]))))
                     
                     #on time first dose
                     on_time_first_vacc = (vacc_target_group.filter(

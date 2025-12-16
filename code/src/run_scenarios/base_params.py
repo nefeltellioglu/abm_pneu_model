@@ -101,6 +101,7 @@ p = {
     't_per_year': 52,
     'logging': False,
     'years': [0,18],
+    'num_runs': 100,
     'record_interval': 1,
     'save_population': True,
     "read_population": True,

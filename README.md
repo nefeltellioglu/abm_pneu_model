@@ -1,4 +1,4 @@
-# Agent-based pneumococcal transmission model
+# Individual-based pneumococcal transmission model
 
 ## Installation
 
@@ -13,6 +13,9 @@ source venv/bin/activate
 pip install -e .
 ```
 
+## Manuscript
+
+The manuscript that explains the model in more detail is available as a preprint: [Tellioglu et al.](https://www.medrxiv.org/content/10.1101/2025.05.22.25327965v4). 
 
 ## Code guide
 

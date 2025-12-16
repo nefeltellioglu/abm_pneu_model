@@ -128,7 +128,7 @@ class DisSimulation(Simulation):
                                       pop=self.P, cases=[],introduction=False,
                                       day = int(year_begin * 364),
                                       new_I=[], rng=self.rng)
-        self.plot_dur_infections()
+        #self.plot_dur_infections()
         for t in range(t_begin + 1, t_end + 1):
             
             day = t * 364 // self.p['t_per_year']
