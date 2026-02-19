@@ -1,11 +1,9 @@
 /__pycache__
 *.pyc
-output/.DS_Store
+src/pneu_abm/output/.DS_Store
 .DS_Store
-output/*
-output/**
+src/pneu_abm/output/*
+src/pneu_abm/output/**
 **/__pycache__
 */__pycache__
-data/
-data/saved_checkpoints/
-data/*
+src/pneu_abm/data/saved_checkpoints/

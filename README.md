@@ -19,4 +19,4 @@ The manuscript that explains the model in more detail is available as a preprint
 
 ## Code guide
 
-The background for the pathogen burden, need for a novel ABM model, structure of the repository and how to run example scenarios are all described in [introduction.ipynb](code/src/code_guide/introduction.ipynb) Notebook.
+The background for the pathogen burden, need for a novel ABM model, structure of the repository and how to run example scenarios are all described in [introduction.ipynb](src/pneu_abm/code_guide/introduction.ipynb) Notebook.

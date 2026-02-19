@@ -1,4 +1,0 @@
-code_guide
-model
-run_scenarios
-utils
