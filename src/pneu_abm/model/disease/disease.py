@@ -202,216 +202,157 @@ class Disease:
 
         self.vaccine_antibody_df, self.acceptable_vaccine_name_endings = \
                 create_vaccine_antibody_df(self.vaccines, self.strains)
-    
-    def find_paediatric_final_dose(self, day, vaccine, prev_vacc, value, vac_rng, 
-                        on_time_coverage, late_coverage, P):
-        
-        prev_vacc_doses = len(self.vaccines[prev_vacc]["daily_schedule"])
-        vaccine_name_end = vaccine.split("_")[-1]   
+
+    # ------------------------------------------------------------------
+    # Helper routines to reduce repetition in vaccination logic
+    # ------------------------------------------------------------------
+    def _clean_vaccine_name(self, vaccine: str) -> str:
+        """Normalize a vaccine string by stripping version suffixes."""
+        vaccine_name_end = vaccine.split("_")[-1]
         if vaccine_name_end not in self.acceptable_vaccine_name_endings:
             vaccine = vaccine.split(f"_{vaccine_name_end}")[0]
-        
-        vacc_target_group = (
-                P.I.filter((pl.col("age")
-                    .is_between(value["vaccination_age_range"][0],
-                                value["vaccination_age_range"][1])
-                    
-                    ) & (
-                (
-        (pl.col("vaccines").struct.field("no_of_doses") == prev_vacc_doses) &
-        (pl.col("vaccines").struct.field("vaccine_type") ==  prev_vacc) &
-        (pl.col("vaccines").struct.field("on_time") == 1))
-           )) .select(["id","age", "age_days", "vaccines"])
-                    )   
-        #on time first dose
+        return vaccine
+
+    def _partition_by_timing(
+        self,
+        vacc_target_group: pl.DataFrame,
+        value: dict,
+        on_time_cov: float,
+        late_cov: float,
+        vac_rng,
+    ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+        """Split a candidate set into on-time, late and continuing individuals.
+
+        All three returned DataFrames contain the same columns as the input.
+        """
         random_numbers = vac_rng.random(vacc_target_group.height)
-        on_time_first_vacc = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") == value["daily_schedule"][0]) &
-            (pl.col("age") == value["vaccination_age_range"][0]) &
-             (pl.lit(random_numbers) <= on_time_coverage)
-            ))
-        late_first_vacc = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") == value["daily_schedule"][0]) &
-            (pl.col("age") == value["vaccination_age_range"][0]) &
-             ((on_time_coverage < pl.lit(random_numbers)) & \
-              (pl.lit(random_numbers) <= \
-              on_time_coverage + (late_coverage))
-            )))
-                           
-        cont_vacc_target_group = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") != value["daily_schedule"][0]) |
-            (pl.col("age") != value["vaccination_age_range"][0]) |
-             (pl.lit(random_numbers) > (on_time_coverage + \
-                                  (late_coverage)))
-            ))
-    
-        on_time_first_vacc = (on_time_first_vacc.with_columns(
+        on_time = vacc_target_group.filter(
+            (pl.col("age_days") == value["daily_schedule"][0])
+            & (pl.col("age") == value["vaccination_age_range"][0])
+            & (pl.lit(random_numbers) <= on_time_cov)
+        )
+        late = vacc_target_group.filter(
+            (pl.col("age_days") == value["daily_schedule"][0])
+            & (pl.col("age") == value["vaccination_age_range"][0])
+            & ((on_time_cov < pl.lit(random_numbers))
+               & (pl.lit(random_numbers) <= on_time_cov + late_cov))
+        )
+        cont = vacc_target_group.filter(
+            (pl.col("age_days") != value["daily_schedule"][0])
+            | (pl.col("age") != value["vaccination_age_range"][0])
+            | (pl.lit(random_numbers) > (on_time_cov + late_cov))
+        )
+        return on_time, late, cont
+
+    def _make_on_time_entry(self, df: pl.DataFrame, vaccine: str, day: int) -> pl.DataFrame:
+        """Increment dose count and set vaccination metadata for on-time recipients."""
+        return df.with_columns(
             pl.struct(
-            (pl.col("vaccines").struct.field("no_of_doses") + 1),
+                (pl.col("vaccines").struct.field("no_of_doses") + 1),
                 (pl.lit(1).cast(pl.Int64).alias("on_time")),
                 (pl.lit(vaccine)).alias("vaccine_type"),
                 pl.lit(day).alias("final_vaccine_time"),
-                
-                ).alias("vaccines")
-            
-            ))
+            ).alias("vaccines")
+        )
+    
+    def find_paediatric_final_dose(self, day, vaccine, prev_vacc, value, vac_rng, 
+                        on_time_coverage, late_coverage, P):
+        """Find children eligible for a final dose following a prior schedule."""
+        # normalize name and compute previous schedule length
+        vaccine = self._clean_vaccine_name(vaccine)
+        prev_vacc_doses = len(self.vaccines[prev_vacc]["daily_schedule"])
+        vacc_target_group = (
+            P.I.filter(
+                (pl.col("age").is_between(value["vaccination_age_range"][0],
+                                            value["vaccination_age_range"][1]))
+                & (
+                    (pl.col("vaccines").struct.field("no_of_doses") == prev_vacc_doses)
+                    & (pl.col("vaccines").struct.field("vaccine_type") == prev_vacc)
+                    & (pl.col("vaccines").struct.field("on_time") == 1)
+                )
+            )
+            .select(["id", "age", "age_days", "vaccines"])
+        )
+        on_time_first_vacc, late_first_vacc, cont_vacc_target_group = self._partition_by_timing(
+            vacc_target_group, value, on_time_coverage, late_coverage, vac_rng
+        )
+        on_time_first_vacc = self._make_on_time_entry(on_time_first_vacc, vaccine, day)
         return on_time_first_vacc, late_first_vacc, cont_vacc_target_group
     
     def find_paediatric(self, day, vaccine, prev_vacc, value, vac_rng, 
                         on_time_coverage, late_coverage, P):
-        
-        vaccine_name_end = vaccine.split("_")[-1]   
-        if vaccine_name_end not in self.acceptable_vaccine_name_endings:
-            vaccine = vaccine.split(f"_{vaccine_name_end}")[0]
-        
+        """Find paediatric individuals eligible for routine vaccination."""
+        vaccine = self._clean_vaccine_name(vaccine)
         vacc_target_group = (
-            P.I.filter((pl.col("age")
-                .is_between(value["vaccination_age_range"][0],
-                            value["vaccination_age_range"][1])
-                
-                ) & 
-                (pl.col("vaccines").struct.field("no_of_doses")
-                     < len(value["daily_schedule"]))
-                )
-            .select(["id","age", "age_days", "vaccines"])
+            P.I.filter(
+                (pl.col("age").is_between(value["vaccination_age_range"][0],
+                                            value["vaccination_age_range"][1]))
+                & (pl.col("vaccines").struct.field("no_of_doses")
+                   < len(value["daily_schedule"]))
+            )
+            .select(["id", "age", "age_days", "vaccines"])
         )
-                                   
-        #on time first dose
-        random_numbers = vac_rng.random(vacc_target_group.height)
-        on_time_first_vacc = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") == value["daily_schedule"][0]) &
-            (pl.col("age") == value["vaccination_age_range"][0]) &
-             (pl.lit(random_numbers) <= on_time_coverage)
-            ))
-        late_first_vacc = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") == value["daily_schedule"][0]) &
-            (pl.col("age") == value["vaccination_age_range"][0]) &
-             ((on_time_coverage < pl.lit(random_numbers)) & \
-              (pl.lit(random_numbers) <= \
-              on_time_coverage + (late_coverage))
-            )))
-                           
-        cont_vacc_target_group = (vacc_target_group.filter(#on time 
-            (pl.col("age_days") != value["daily_schedule"][0]) |
-            (pl.col("age") != value["vaccination_age_range"][0]) |
-             (pl.lit(random_numbers) > (on_time_coverage + \
-                                  (late_coverage)))
-            ))
-    
-        on_time_first_vacc = (on_time_first_vacc.with_columns(
-            pl.struct(
-            (pl.col("vaccines").struct.field("no_of_doses") + 1),
-                (pl.lit(1).cast(pl.Int64).alias("on_time")),
-                (pl.lit(vaccine)).alias("vaccine_type"),
-                #(pl.col("vaccines").struct.field("on_time") + 1),
-                pl.lit(day).alias("final_vaccine_time"),
-                ).alias("vaccines")
-            ))
-            
+        on_time_first_vacc, late_first_vacc, cont_vacc_target_group = self._partition_by_timing(
+            vacc_target_group, value, on_time_coverage, late_coverage, vac_rng
+        )
+        on_time_first_vacc = self._make_on_time_entry(on_time_first_vacc, vaccine, day)
         return on_time_first_vacc, late_first_vacc, cont_vacc_target_group
     
     def find_paediatric_catchup(self, day, vaccine, prev_vacc, value, vac_rng, 
                                 on_time_coverage, late_coverage, P):
-        
+        """Identify children eligible for catch-up vaccination.
+        """
         vacc_target_group = (
-            P.I.filter((pl.col("age")
-                .is_between(value["vaccination_age_range"][0],
-                            value["vaccination_age_range"][1])
-                
-                ) & (pl.col("vaccines")
-                     .struct.field("no_of_doses") == \
-                      len(\
-            self.vaccines[prev_vacc]["daily_schedule"]) 
-                        ) & \
-                     (pl.col("vaccines")
-                      .struct.field("vaccine_type") == prev_vacc) 
-                             )
-               .select(["id","age", "age_days", 
-                        "vaccines"])
+            P.I.filter(
+                (pl.col("age").is_between(value["vaccination_age_range"][0],
+                                            value["vaccination_age_range"][1]))
+                & (pl.col("vaccines").struct.field("no_of_doses") ==
+                   len(self.vaccines[prev_vacc]["daily_schedule"]))
+                & (pl.col("vaccines").struct.field("vaccine_type") == prev_vacc)
+            )
+            .select(["id", "age", "age_days", "vaccines"])
         )
-              
-        #on time first dose
-        random_numbers = vac_rng.random(vacc_target_group.height)
-        on_time_first_vacc = (vacc_target_group.filter(#on time 
-             (pl.col("age_days") == value["daily_schedule"][0]) &
-             #(pl.col("age") == value["vaccination_age_range"][0]) &
-              (pl.lit(random_numbers) <= on_time_coverage)
-             ))
-        late_first_vacc = (vacc_target_group.filter(#on time 
-             (pl.col("age_days") == value["daily_schedule"][0]) &
-             #(pl.col("age") == value["vaccination_age_range"][0]) &
-              ((on_time_coverage < pl.lit(random_numbers)) & \
-               (pl.lit(random_numbers) <= \
-               on_time_coverage + (late_coverage))
-             )))
-                            
-        cont_vacc_target_group = (vacc_target_group.filter(#on time 
-             (pl.col("age_days") != value["daily_schedule"][0]) |
-             #(pl.col("age") != value["vaccination_age_range"][0]) |
-              (pl.lit(random_numbers) > (on_time_coverage + \
-                                   (late_coverage)))
-             ))
-        on_time_first_vacc = (on_time_first_vacc.with_columns(
-               
+        on_time_first_vacc, late_first_vacc, cont_vacc_target_group = self._partition_by_timing(
+            vacc_target_group, value, on_time_coverage, late_coverage, vac_rng
+        )
+        # preserve existing on_time flag for catch-up entries
+        on_time_first_vacc = on_time_first_vacc.with_columns(
             pl.struct(
-            (pl.col("vaccines").struct.field("no_of_doses") + 1),
-    (pl.col("vaccines").struct.field("on_time")).alias("on_time"),
+                (pl.col("vaccines").struct.field("no_of_doses") + 1),
+                (pl.col("vaccines").struct.field("on_time")).alias("on_time"),
                 (pl.lit(vaccine)).alias("vaccine_type"),
-                #(pl.col("vaccines").struct.field("on_time") + 1),
                 pl.lit(day).alias("final_vaccine_time"),
-                ).alias("vaccines")
-                ))
+            ).alias("vaccines")
+        )
         return on_time_first_vacc, late_first_vacc, cont_vacc_target_group
     
     def find_adult(self, day, vaccine, prev_vacc, value, vac_rng, 
                    on_time_coverage, late_coverage, P):
-        
-        vaccine_name_end = vaccine.split("_")[-1]   
-        if vaccine_name_end not in self.acceptable_vaccine_name_endings:
-            vaccine = vaccine.split(f"_{vaccine_name_end}")[0]
-        vaccine = vaccine.strip("_1").strip("_2")
-        
+        """Find adult individuals eligible for vaccination."""
+        vaccine = self._clean_vaccine_name(vaccine).strip("_1").strip("_2")
         vacc_age_group = (
-            P.I.filter((pl.col("age")
-                .is_between(value["vaccination_age_range"][0],
-                            value["vaccination_age_range"][1])
-                
-                ) )
-               .select(["id","age", "age_days", 
-                        "vaccines"])
+            P.I.filter(
+                pl.col("age").is_between(value["vaccination_age_range"][0],
+                                           value["vaccination_age_range"][1])
+            )
+            .select(["id", "age", "age_days", "vaccines"])
         )
-        vacc_target_group = (
-            vacc_age_group.filter(
-                (pl.col("vaccines").struct.field("no_of_doses")
-                     < len(value["daily_schedule"]))))
-        
-        #on time first dose
-        random_numbers = vac_rng.random(vacc_target_group.height)
-        on_time_first_vacc = (vacc_target_group.filter(
-        (pl.col("age_days") == value["daily_schedule"][0]) &
-              (pl.lit(random_numbers) <= on_time_coverage)
-             ))
-        late_first_vacc = (vacc_target_group.filter(#on time 
-          (pl.col("age_days") == value["daily_schedule"][0]) &
-              ((on_time_coverage < pl.lit(random_numbers)) & \
-               (pl.lit(random_numbers) <= \
-               on_time_coverage + (late_coverage))
-             )))
-                            
-        cont_vacc_target_group = (vacc_target_group.filter(
-           (pl.col("age_days") != value["daily_schedule"][0]) |
-               (pl.lit(random_numbers) > (on_time_coverage + \
-                                   (late_coverage)))
-             ))
-        
-        on_time_first_vacc = (on_time_first_vacc.with_columns(
-             pl.struct(
-        (pl.col("vaccines").struct.field("no_of_doses") + 1),
-        (pl.col("vaccines").struct.field("on_time")).alias("on_time"),
+        vacc_target_group = vacc_age_group.filter(
+            pl.col("vaccines").struct.field("no_of_doses")
+            < len(value["daily_schedule"])
+        )
+        on_time_first_vacc, late_first_vacc, cont_vacc_target_group = self._partition_by_timing(
+            vacc_target_group, value, on_time_coverage, late_coverage, vac_rng
+        )
+        # maintain existing on_time flag from adult records
+        on_time_first_vacc = on_time_first_vacc.with_columns(
+            pl.struct(
+                (pl.col("vaccines").struct.field("no_of_doses") + 1),
+                (pl.col("vaccines").struct.field("on_time")).alias("on_time"),
                 (pl.lit(vaccine)).alias("vaccine_type"),
                 pl.lit(day).alias("final_vaccine_time"),
-                ).alias("vaccines")
-                ))
+            ).alias("vaccines")
+        )
         return on_time_first_vacc, late_first_vacc, cont_vacc_target_group
     
     def give_late_and_following_vac_doses(self, day, vaccine,prev_vacc, 
@@ -699,23 +640,6 @@ class Disease:
                             
                            )).drop("dur_of_infection")
                 P.I = (P.I.update(infected, on="id", how="left"))
-                """    
-                
-                prev_02 = (
-                    P.I.filter(pl.col("age") <= 2)
-                       .select((pl.col("no_of_strains") > 0).mean())
-                       .item()
-                )
-
-                prev_older = (
-                    P.I.filter(pl.col("age") > 2)
-                       .select((pl.col("no_of_strains") > 0).mean())
-                       .item()
-                )
-
-                print(f"Prevalence (age 0–2): {prev_02:.4f}")
-                print(f"Prevalence (age >2): {prev_older:.4f}")
-                """
              
     def calc_age_group_fois(self):
         #inf_fraction is sorted already
@@ -760,10 +684,12 @@ class Disease:
          #add an infection fraction column
          #sort based on age groups
 
+         # compute aggregated counts by age group to determine
+         # fraction of infections relative to maximum coinfections
          self.foi = (P.I
                      .group_by("age_group").agg(
                pl.col("no_of_strains").sum(),
-               pl.count().alias("total_inds") #number of people in each group
+               pl.count().alias("total_inds")  # number of individuals per group
               )
               ).with_columns(
               inf_fraction = pl.col("no_of_strains")/(pl.col("total_inds") *\
@@ -874,7 +800,12 @@ class Disease:
     #############  Updating # # # # # # # # # # # #  
 
     def update(self, t, day, P, t_per_year, rng):
-        """Advance disease dynamics by one timestep."""
+        """Advance disease dynamics by one timestep.
+
+        This high-level driver performs vaccine checks, community transmission,
+        external importations, clinical progression, recoveries, and observer
+        recording in sequence.
+        """
         self.check_vaccines(t, day, P, t_per_year)
 
         # Community transmission
@@ -909,71 +840,77 @@ class Disease:
         return True
     
     def check_vaccines(self, t, day, P, t_per_year):
-        """
-        Check vacc schedules and apply on time and late vaccinations.
+        """Evaluate vaccination schedules and update population records.
         
+        Iterates through each configured vaccine, computes current rollout year,
+        determines coverage probabilities and dispatches to the appropriate
+        paediatric/adult targeting function. Updated individuals are merged back
+        into the main population DataFrame.
+
+        Note:
+            The `t_per_year` argument is accepted for interface compatibility but
+            is not used; timestep duration is derived from ``self.period``.
         """
-        cur_year = day // 365 
-        cur_day_in_year = day % 365
-        period = self.period #day // t
-        
+        cur_year = day // 365
+        period = self.period  # number of simulation days per timestep
+
         for vaccine, value in self.vaccines.items():
-            #vaccine, value = list(self.vaccines.items())[0]
-            #vacc_rollout_year = 0
-           vac_rng = self.vaccines[vaccine]["rng"]
-           if value["years"][0] <= cur_year <= value["years"][1]:
+            vac_rng = self.vaccines[vaccine]["rng"]
+            if value["years"][0] <= cur_year <= value["years"][1]:
                 vacc_rollout_year = cur_year - value["years"][0]
-                on_time_coverage = value["on_time_coverage_frac"][\
-                                vacc_rollout_year]
-                late_coverage = value["late_coverage_frac"][\
-                                vacc_rollout_year]
+                on_time_coverage = value["on_time_coverage_frac"][vacc_rollout_year]
+                late_coverage = value["late_coverage_frac"][vacc_rollout_year]
                 prev_vacc = value["previous_vacc"]
                 func = self.vac_functions[value["function"].name]
-                (on_time_first_vacc, late_first_vacc, 
-                 cont_vacc_target_group) = func(day, vaccine,prev_vacc, 
-                                                value, vac_rng,
-                                                on_time_coverage, 
-                                                late_coverage, P) 
-                
+                (on_time_first_vacc, late_first_vacc,
+                 cont_vacc_target_group) = func(
+                    day,
+                    vaccine,
+                    prev_vacc,
+                    value,
+                    vac_rng,
+                    on_time_coverage,
+                    late_coverage,
+                    P,
+                )
                 (late_first_vacc, on_time_following_vacc,
                             late_vacc, cont_vacc_target_group) = (
-                                self.give_late_and_following_vac_doses(day, 
-                                               vaccine,prev_vacc, 
+                                self.give_late_and_following_vac_doses(day,
+                                               vaccine,prev_vacc,
                                                value, vac_rng,
-                                               on_time_coverage, 
-                                               late_coverage, 
-                                               late_first_vacc, 
-                                               cont_vacc_target_group, 
+                                               on_time_coverage,
+                                               late_coverage,
+                                               late_first_vacc,
+                                               cont_vacc_target_group,
                                                period))
-                
-                updated_target_group = (pl.concat([on_time_first_vacc, 
+                updated_target_group = (pl.concat([on_time_first_vacc,
                                                 late_first_vacc,
                                             on_time_following_vacc,
                                             late_vacc,
                                             cont_vacc_target_group])
                                         .unnest("vaccines"))
                 P.I = P.I.unnest("vaccines")
-                P.I = P.I.update(updated_target_group, on="id", how="left") 
+                P.I = P.I.update(updated_target_group, on="id", how="left")
                 P.I = (P.I.with_columns(pl.struct(pl.col(["no_of_doses",
-                                 "on_time", "vaccine_type", 
+                                 "on_time", "vaccine_type",
                                  "final_vaccine_time" ]))
                                         .alias("vaccines"))
                            .drop(["no_of_doses",
-                                            "on_time", "vaccine_type", 
+                                            "on_time", "vaccine_type",
                                             "final_vaccine_time"]))
                 
     def check_recoveries(self, t, day, P):
         
-        # Filter rows that have at least one endTime <= day
+        # Filter individuals with at least one infection that should have ended
         recovered = P.I.filter(
             pl.col("endTimes").list.eval(pl.element() <= day).list.sum() > 0
         ).select(["id", "strain_list", "endTimes", "no_of_strains"])
         
         base_ids = recovered.select(["id"])
-        # Explode the list columns into long format
+        # convert list columns to long format so we can drop expired infections
         recovered_exploded = recovered.explode(["strain_list", "endTimes"])
         
-        # Filter out elements where endTime <= day
+        # keep only the infections that are still active
         recovered_exploded = recovered_exploded.filter(
             pl.col("endTimes") > day
         )
@@ -1021,9 +958,7 @@ class Disease:
         # Keep only eligible individuals
         # -------------------------------------------------
         pop_size = P.I.height
-        initial_pop = P.I
-      
-        #start = time.perf_counter()
+        # keep a snapshot of the population size for integrity checks later
         foi = self.foi.select("age_group", "prob_infection")
 
         eligible = P.I.filter(
