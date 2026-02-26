@@ -7,78 +7,69 @@ Created on Fri Aug 25 14:40:02 2023
 """
 
 
-#import libraries
-import numpy as np
-#import tables as tb
-from random import Random
-from scipy.stats import lognorm,logistic
-import tables as tb
-import os
+# Standard library
 import json
-import polars as pl
-from copy import deepcopy
-from itertools import chain
-import tomllib
+import os
 from collections import defaultdict
-import time
 
+# Third-party
+import numpy as np
+import polars as pl
+import tables as tb
+from scipy.stats import lognorm
 
-from .antibody_levels import waning_ratio #create_vaccine_antibody_df, 
-from .antibody_levels import create_vaccine_antibody_df
-#from .antibody_levels_legacy import create_vaccine_antibody_df
+# Local
+from .antibody_levels import create_vaccine_antibody_df, waning_ratio
 from .disease_utils import looks_like_json_list
 
-class Disease(object):
+class Disease:
     """
-    Disease class that updates disease state of a population.
-    
-    An agent-based model that simulated multi-strain pathogen transmission.
-    
-    :param 
-    
+    Update disease state of a population for a multi-strain pathogen ABM.
+
+    Responsibilities:
+    - load strain/vaccine/disease parameter tables
+    - calculate force of infection (FOI) by age group
+    - sample new exposures/infections
+    - progress disease outcomes and recoveries
+    - write outputs via observers / HDF5 parameter block
     """
         
     def __init__(self, p, cmatrix, fname, mode):
-        #########################
-        #population parameters
-        #########################
-        
-        # cmatrix: contact matrix 
+        # Contact matrix (age-group mixing)
         self.cmatrix = cmatrix
-        self.transmission_rng = np.random.default_rng(p['transmission_seed'])
-        self.vaccine_rng = np.random.default_rng(p['vaccine_seed'])
-        
-        self.disease_rng = np.random.default_rng(p['transmission_seed'])
-        seeds = self.disease_rng.integers(0, 2**32 - 1, 
-                                    size= p['clinical_model_per_simulation'], 
-                                    dtype=np.uint32)
+
+        # RNGs: keep separate streams for transmission/vaccination/disease outcomes
+        self.transmission_rng = np.random.default_rng(p["transmission_seed"])
+        self.vaccine_rng = np.random.default_rng(p["vaccine_seed"])
+
+        self.disease_rng = np.random.default_rng(p["transmission_seed"])
+
+        # Pre-create independent RNGs for clinical model replicates within a simulation.
+        seeds = self.disease_rng.integers(
+            0,
+            2**32 - 1,
+            size=p["clinical_model_per_simulation"],
+            dtype=np.uint32,
+        )
         self.disease_rngs = [np.random.default_rng(seed) for seed in seeds]
-        #self.nprng = np.random.RandomState(rng.randint(0, 99999999))
-        self.period = 365 // p['t_per_year']
-        ####################
-        #disease parameters
-        ####################
-        # External exposure rate: per person, 
-        #per time step rate of disease introduction
-        #self.external_exposure_rate = p['external_exposure_rate']
-        
-        # vaccines: set of vaccines to be applied during simulation 
-        self.vaccines = {}
 
-        # strains
-        self.strains = []
+        # Number of days per simulation time-step
+        self.period = 365 // p["t_per_year"]
 
-        ###############
-        #storage: h5file: HDF file for storing output of simulation
+        # Vaccines and strains are populated by the loaders below
+        self.vaccines: dict = {}
+        self.strains: pl.Series | list = []
+
+        # HDF5 output file; store params at creation time
         self.h5file = tb.open_file(fname, mode)
-        if mode in 'w':
+        if mode in "w":
             self.store_params(p)
-            
-        # obs_on: if True, record output on simulation
-        self.obs_on = True
 
-        # observers: data collection objects
+        # Observers handle output collection
+        self.obs_on = True
         self.observers = {}
+
+        # Load all model inputs required for updates
         self._load_strain_data(p)
         self._load_vaccine_data(p)
         self._load_disease_data(p)
@@ -104,18 +95,13 @@ class Disease(object):
         for serotype, multiplier in self.serotype_to_trans_multiplier.items():
             self.trans_multiplier_to_serotype[str(multiplier)].append(serotype)
         
+        # Group serotypes by transmission multiplier (used in FOI computation)
         grouped = defaultdict(list)
-        
-        # group serotypes by multiplier
         for serotype, multiplier in self.serotype_to_trans_multiplier.items():
             grouped[multiplier].append(serotype)
-        
-        # build the final list
+
         self.grouped_transmission_multipliers = [
-            {
-                "serotypes": serotypes,
-                "trans_multiplier": multiplier,
-            }
+            {"serotypes": serotypes, "trans_multiplier": multiplier}
             for multiplier, serotypes in grouped.items()
         ]
         
@@ -129,70 +115,81 @@ class Disease(object):
                 comment_prefix="#",
                 has_header=True)
         
-    def _load_vaccine_data(self,p):
-        
-        #adjust rollout days
-        period = 365 // p["t_per_year"]
-        
-        # load vaccine data
-        vaccine_fname = os.path.join(p['resource_prefix'],
-                                                p['vaccine_list'])
-        df = pl.read_csv(vaccine_fname, 
-                         comment_prefix="#",
-                         has_header=True)
-        # Infer list fields from the first row
+    def _load_vaccine_data(self, p):
+        """Load vaccine configuration and prepare per-vaccine helpers."""
+        period = 365 // p["t_per_year"]  # align rollout schedule to simulation timestep
+
+        vaccine_fname = os.path.join(p["resource_prefix"], p["vaccine_list"])
+        df = pl.read_csv(vaccine_fname, comment_prefix="#", has_header=True)
+
+        # Detect columns that store JSON-encoded lists and decode them once.
         sample = df.head(1).to_dicts()[0]
-        
-        LIST_FIELDS = [col for col, val in sample.items() if 
-                       looks_like_json_list(val)]
-        # Decode JSON list columns
-        for col in LIST_FIELDS:
-            s = df[col].map_elements(
-                lambda x: json.loads(x) if isinstance(x, str) and x else x
-            )
+        list_fields = [col for col, val in sample.items() if looks_like_json_list(val)]
+        for col in list_fields:
+            s = df[col].map_elements(lambda x: json.loads(x) if isinstance(x, str) and x else x)
             df = df.with_columns(pl.Series(col, s))
-        # Convert to dict-of-dicts keyed by "name"
+
+        # Convert to dict-of-dicts keyed by vaccine "name" for fast lookup.
         self.vaccines = {
             row["name"]: {k: v for k, v in row.items() if k != "name"}
             for row in df.to_dicts()
         }
         
+        # Cache vaccines that only protect against IPD (no acquisition protection).
         self.vaccs_only_protective_against_IPD = []
-        
+
         for vaccine, value in self.vaccines.items():
+            # Each vaccine gets its own RNG stream so schedule draws are reproducible.
             cur_vacc_seed = self.vaccine_rng.integers(0, 99999999)
             self.vaccines[vaccine]["rng"] = np.random.default_rng(cur_vacc_seed)
-            self.vaccines[vaccine]["daily_schedule"] = \
-                [period * (day // period) for day in value["daily_schedule"]]
-            
-            self.vaccines[vaccine]["on_time_coverage_frac"] = \
-                self.vaccines[vaccine]["on_time_coverage_frac"] + \
-                    [self.vaccines[vaccine]["on_time_coverage_frac"][-1]] * \
-                        int(self.vaccines[vaccine]["years"][1] - \
-                            self.vaccines[vaccine]["years"][0] - \
-                     len(self.vaccines[vaccine]["on_time_coverage_frac"]) + 1)
-            self.vaccines[vaccine]["late_coverage_frac"] = \
-                self.vaccines[vaccine]["late_coverage_frac"] + \
-                    [self.vaccines[vaccine]["late_coverage_frac"][-1]] * \
-                        int(self.vaccines[vaccine]["years"][1] - \
-                            self.vaccines[vaccine]["years"][0] - \
-                        len(self.vaccines[vaccine]["late_coverage_frac"]) + 1)
-            
-            self.vaccines[vaccine]["daily_schedule"] = \
-                pl.Series(self.vaccines[vaccine]["daily_schedule"])
-            self.vaccines[vaccine]["on_time_coverage_frac"] = \
-                pl.Series(self.vaccines[vaccine]["on_time_coverage_frac"])
-            self.vaccines[vaccine]["late_coverage_frac"] = \
-                pl.Series(self.vaccines[vaccine]["late_coverage_frac"])
-            self.vaccines[vaccine]["serotypes"] = \
-                pl.Series("serotypes", values = 
-                          sorted(set(self.strains_df
-                    .filter(pl.col(self.vaccines[vaccine]["vaccine_given"])
-                            )['serotype'])))
-            self.vaccines[vaccine]["vaccine_given"] = \
-                pl.Series(self.vaccines[vaccine]["vaccine_given"])
-            self.vaccines[vaccine]["function"] = \
-                pl.Series(self.vaccines[vaccine]["function"])
+
+            # Snap rollout schedule days to simulation periods (e.g. weekly/monthly steps).
+            self.vaccines[vaccine]["daily_schedule"] = [
+                period * (day // period) for day in value["daily_schedule"]
+            ]
+
+            # Extend coverage arrays to span the configured rollout years.
+            years_span = int(value["years"][1] - value["years"][0] + 1)
+
+            on_time = list(self.vaccines[vaccine]["on_time_coverage_frac"])
+            if len(on_time) < years_span:
+                on_time.extend([on_time[-1]] * (years_span - len(on_time)))
+            self.vaccines[vaccine]["on_time_coverage_frac"] = on_time
+
+            late = list(self.vaccines[vaccine]["late_coverage_frac"])
+            if len(late) < years_span:
+                late.extend([late[-1]] * (years_span - len(late)))
+            self.vaccines[vaccine]["late_coverage_frac"] = late
+
+            # Convert commonly accessed fields to Polars Series for vectorized operations later.
+            self.vaccines[vaccine]["daily_schedule"] = pl.Series(
+                self.vaccines[vaccine]["daily_schedule"]
+            )
+            self.vaccines[vaccine]["on_time_coverage_frac"] = pl.Series(
+                self.vaccines[vaccine]["on_time_coverage_frac"]
+            )
+            self.vaccines[vaccine]["late_coverage_frac"] = pl.Series(
+                self.vaccines[vaccine]["late_coverage_frac"]
+            )
+
+            # Compute covered serotypes from the strain table.
+            self.vaccines[vaccine]["serotypes"] = pl.Series(
+                "serotypes",
+                values=sorted(
+                    set(
+                        self.strains_df.filter(
+                            pl.col(self.vaccines[vaccine]["vaccine_given"])
+                        )["serotype"]
+                    )
+                ),
+            )
+
+            # Ensure these fields are Series (consumed later as list-like columns).
+            self.vaccines[vaccine]["vaccine_given"] = pl.Series(
+                self.vaccines[vaccine]["vaccine_given"]
+            )
+            self.vaccines[vaccine]["function"] = pl.Series(self.vaccines[vaccine]["function"])
+
             if self.vaccines[vaccine]["is_only_protective_against_IPD"]:
                 self.vaccs_only_protective_against_IPD.append(vaccine)
         # Map function names to actual functions
@@ -877,36 +874,38 @@ class Disease(object):
     #############  Updating # # # # # # # # # # # #  
 
     def update(self, t, day, P, t_per_year, rng):
-        """
-        Update the disease state of the population.
-        """
+        """Advance disease dynamics by one timestep."""
         self.check_vaccines(t, day, P, t_per_year)
-        
-        is_population_infected = self.calc_foi(day, P, self.cmatrix)
-        if is_population_infected:
-            new_infections = self.check_exposure(t, day, P) 
-            
-        newly_infected_pop_external = self.external_exposure(t, day, P)
-        
-        if (new_infections.height and 
-                isinstance(newly_infected_pop_external, pl.DataFrame)):
-            new_infections = pl.concat([new_infections, 
-                                        newly_infected_pop_external],
-                                       rechunk=True, how = 'diagonal') 
-        elif isinstance(newly_infected_pop_external, pl.DataFrame): 
-            new_infections = newly_infected_pop_external
-        
+
+        # Community transmission
+        new_infections = pl.DataFrame()
+        if self.calc_foi(day, P, self.cmatrix):
+            new_infections = self.check_exposure(t, day, P)
+
+        # External introductions (may return None)
+        ext = self.external_exposure(t, day, P)
+        if isinstance(ext, pl.DataFrame) and ext.height:
+            new_infections = (
+                pl.concat([new_infections, ext], rechunk=True, how="diagonal")
+                if new_infections.height
+                else ext
+            )
+
+        # Clinical progression for newly infected
         if new_infections.height:
             self.check_disease(t, day, P, new_infections)
-            
+
+        # Clear infections that have ended
         self.check_recoveries(t, day, P)
-            
-        self.update_observers(t, disease=self, pop=P,
-                              day=day,
-                              #cases=cases,#cases=cases['infection'],
-                              #introductions=introductions,
-                              #new_I=new_I, 
-                              rng=rng)
+
+        # Record outputs
+        self.update_observers(
+            t,
+            disease=self,
+            pop=P,
+            day=day,
+            rng=rng,
+        )
         return True
     
     def check_vaccines(self, t, day, P, t_per_year):
@@ -1001,171 +1000,32 @@ class Disease(object):
         )
         # Update the main DataFrame
         P.I = P.I.update(recovered_grouped, on="id", how="left")          
-        
-    def check_exposure_legacy(self, t, day, P):
-        """
-        Not used as it was quite slow
-        
-        """
-        pop_size = P.I.height
-        initial_pop = P.I
-      
-       
-        #older version - this was quite slow
-        prob_infection = pl.Series("prob_infection", 
-                                   [self.foi["prob_infection"]])
-        
-        
-        
-        #assign strains to individuals to which are going to be exposed
-        n = P.I.height  # faster than len(P.I)
-
-        # sample using inverse CDF
-        u = self.transmission_rng.random(n)
-        idx = np.searchsorted(self._strain_cdf, u)
-        sampled_strains = self._strain_array[idx]
-        
-        P.I = (
-            P.I.with_columns(
-                pl.Series("exposed_strains", sampled_strains)
-            )
-            .sort(["no_of_strains", "age_group"])
-        )
-        #identify individuals that are going to be infected by exposed strains
-        random_numbers = self.transmission_rng.random(P.I.height)
-
-        P.I = (P.I.with_columns(
-                   (  pl.lit(random_numbers) <= (\
-                (1 * (pl.col("no_of_strains") < self.max_no_coinfections)) *\
-                    (prob_infection.list.gather(P.I["age_group"])[0] *\
-                     (1 -  (self.reduction_in_susceptibility) * \
-                          (pl.col("no_of_strains"))) * \
-                            (1 - \
-            pl.col("exposed_strains").is_in(pl.col("strain_list")))     
-                                 )
-                   )).alias("will_infected"),
-               ))
-        
-        #add infected strains to "strain_list" and add endTime for them       
-        infected = (
-            P.I.filter(pl.col("will_infected"))
-            .select(["id","age","age_days", "strain_list", "endTimes",
-                     "no_past_infections", "vaccines", "quantile",
-                     "exposed_strains"])
-        )
-        
-        possibly_infected = infected.filter(
-                        pl.col("vaccines").struct.field("no_of_doses") > 0)
-        will_infected = infected.filter(
-                        pl.col("vaccines").struct.field("no_of_doses") == 0)
-        
-        if possibly_infected.height:
-            
-            #vacc that do not provide any protection
-            will_infected_not_protected = possibly_infected.filter(
-                        pl.col("vaccines").struct.field("vaccine_type").is_in(
-                        self.vaccs_only_protective_against_IPD))
-            
-            
-            possibly_infected = possibly_infected.filter(
-                        pl.col("vaccines").struct.field("vaccine_type").is_in(
-                            self.vaccs_only_protective_against_IPD).not_())
-            
-            #if only vacc without any protection, then they will be infected regardless
-            will_infected = pl.concat(
-                                [will_infected, will_infected_not_protected],\
-                                      rechunk=True, how = 'diagonal')
-            
-                
-            possibly_infected = possibly_infected.join(
-                self.vaccine_antibody_df, 
-                left_on = [pl.col("vaccines").struct.field("vaccine_type"),
-                pl.col("vaccines").struct.field("no_of_doses"),
-                "exposed_strains"],
-                right_on = ["vaccine_type","no_of_doses",
-                            "exposed_strains"],
-                how="left").drop("vaccine_type",
-                                 "no_of_doses", "exposed_strains_right") 
-            
-            possibly_infected = possibly_infected.join(
-                                    self.age_specific_prot_parameters, 
-                                     on= ["age", "age_days"],
-                                       how="left")
-            possibly_infected = possibly_infected.with_columns(
-                            self.calc_log_antibodies_given_vacc(
-                                possibly_infected,
-                                day,
-                                self.waning_halflife_day_adult,
-                                self.waning_halflife_day_child,
-                            )
-                        )
-            
-            possibly_infected = possibly_infected.with_columns(
-                    self.calc_prob_acq_givenlog_antibodies()
-                )
-
-            random_numbers = self.transmission_rng.random(possibly_infected.height) 
-            P.vaccinated_acq_pop = (possibly_infected.with_columns(
-               (pl.lit(random_numbers) <= pl.col("prob_of_transmission"))
-               .alias("will_infected")
-               ).filter(pl.col("meanlog")> -9)
-                ).unnest("vaccines").select("id", "age","quantile",
-                                        "will_infected",
-                         "final_vaccine_time", "vaccine_type", "no_of_doses",
-                         "prob_of_transmission", "meanlog", "sdlog",
-                         "log_antibodies", "exposed_strains")
-           
-            will_infected_vacc = (possibly_infected.filter(
-                ((pl.lit(random_numbers) <= pl.col("prob_of_transmission")
-                  ).alias("will_infected")),
-                )).drop("meanlog", "sdlog", self.age_specific_prot_parameters_cols)
-                
-            
-            will_infected = pl.concat([will_infected, will_infected_vacc],\
-                                      rechunk=True, how = 'diagonal')
-
-        will_infected = self.generate_duration_of_infection(
-                        day, will_infected, self.transmission_rng)
-        
-        will_infected = (will_infected.with_columns(
-                    (pl.col("strain_list").list
-                     .concat(pl.col("exposed_strains"))),
-                    (pl.col("endTimes").list.concat( day +
-                        self.period * \
-                         (pl.col("dur_of_infection") / self.period).round())),
-                    (pl.col("no_past_infections") + 1),
-                    (((pl.col("strain_list").list.len()) + 1)
-                      .cast(pl.Int32).alias("no_of_strains")),
-                    )).drop("dur_of_infection")
-        if pop_size != P.I.height:
-            print("pop size has changed")
-
-        P.I = P.I.update(will_infected, on="id", how="left")
-        #check disease
-        new_infections = (will_infected
-                              .filter((pl.col("will_infected") == True))
-                              .explode("strain_list", "endTimes")
-                    .filter(pl.col("exposed_strains") == pl.col("strain_list"))
-                        )
-        #P.I = P.I.update(infected_pop, on="id", how="left")
-
-        return new_infections
               
     def check_exposure(self, t, day, P):
-        """
-        TODO: function description
+        """Sample new infections from community transmission based on FOI.
         
+        Performs binomial draws per age group to determine exposed individuals,
+        applies susceptibility reduction factors for prior infections, assigns strains,
+        and evaluates vaccine-induced protection. Returns DataFrame of newly infected individuals.
+        
+        Args:
+            t (int): Simulation timestep counter
+            day (int): Current simulation day
+            P: Population object with individual data
+            
+        Returns:
+            pl.DataFrame: Newly infected individuals with exposure details
         """
+        
+        # -------------------------------------------------
+        # Keep only eligible individuals
+        # -------------------------------------------------
         pop_size = P.I.height
         initial_pop = P.I
       
         #start = time.perf_counter()
         foi = self.foi.select("age_group", "prob_infection")
-        
-        # -------------------------------------------------
-        # Keep only eligible individuals
-        # -------------------------------------------------
-        
+
         eligible = P.I.filter(
             pl.col("no_of_strains") < self.max_no_coinfections
         )
