@@ -761,6 +761,7 @@ class Disease:
          #if there is at least one infected person
          #calculate strain distribution
          if sum(self.foi["prob_infection"]):
+             # global distribution (used for various outputs)
              self.strain_distribution =  ((P.I.select(
                 pl.col("strain_list").alias("strain"))
                  .explode("strain")
@@ -773,7 +774,7 @@ class Disease:
                          (pl.col("multipliers") * pl.col("count"))
                          .alias("adj_count")   
                          )
-             
+            
              #remove null count & create distribution
              self.strain_distribution = (self.strain_distribution
                             .with_columns(
@@ -793,7 +794,49 @@ class Disease:
                 )  
              self._strain_array = self.strain_distribution["strain"].to_numpy()
              self._strain_cdf = self.strain_distribution["fraction"].to_numpy().cumsum()
-             return True#self.foi["prob_infection"], self.strain_distribution
+
+             # ------------------------------------------------------------------
+             # compute age-specific contact-weighted strain distributions
+             # ------------------------------------------------------------------
+             # long-format counts per age_group and strain
+             strain_counts_long = ((P.I.select("age_group",
+                                                pl.col("strain_list").alias("strain"))
+                                      .explode("strain")
+                                     ).group_by(["age_group","strain"]).agg(pl.count())
+                                      .filter(pl.col("strain") != "null"))
+
+             # fraction within each age_group
+             strain_dist_by_age = strain_counts_long.with_columns(
+                 pl.col("count")
+                 / pl.col("count").sum().over("age_group")
+             )
+
+             # prepare arrays for matrix computation
+             age_n = len(self.cmatrix.age_classes)
+             strains = sorted(strain_dist_by_age["strain"].unique())
+             n_strains = len(strains)
+             # build fraction matrix age x strain
+             frac_mat = np.zeros((age_n, n_strains), dtype=float)
+             for row in strain_dist_by_age.iter_rows():
+                 ag, s, frac = row
+                 if ag < age_n:
+                     frac_mat[int(ag), strains.index(s)] = frac
+
+             # contact matrix
+             C = np.array(self.cmatrix.C, dtype=float)
+             # compute weighted distribution for each recipient age
+             weighted = C.dot(frac_mat)
+             # normalize
+             row_sums = weighted.sum(axis=1, keepdims=True)
+             row_sums[row_sums == 0] = 1
+             weighted = weighted / row_sums
+             # store names + cdfs
+             self._age_strains = np.array(strains)
+             self._age_group_strain_cdfs = {
+                 ag: np.cumsum(weighted[ag]) for ag in range(age_n)
+             }
+
+             return True
          else:
              return False #no inf individuals in the community
              
@@ -1041,15 +1084,25 @@ class Disease:
         )
         # -------------------------------------------------
         # Assign exposed strains ONLY to selected
+        #  * now uses age-group-specific contact-weighted distribution
+        #    instead of a single global distribution
         # -------------------------------------------------
         
         n_selected = selected.height
         
         if n_selected > 0:
+            # draw a uniform random number for each susceptible to be infected
             u = self.transmission_rng.random(n_selected)
-            idx = np.searchsorted(self._strain_cdf, u, side="right")
-            sampled_strains = self._strain_array[idx]
-        
+
+            # sample strain based on contact-weighted distribution for that individual's age group
+            age_groups = selected["age_group"].to_list()
+            idx = np.empty(n_selected, dtype=int)
+            for i, (ag, ui) in enumerate(zip(age_groups, u)):
+                # fall back to global distribution if age group has no contacts
+                cdf = self._age_group_strain_cdfs.get(ag, self._strain_cdf)
+                idx[i] = np.searchsorted(cdf, ui, side="right")
+            sampled_strains = self._age_strains[idx]
+
             selected = selected.with_columns(
                 pl.Series("exposed_strains", sampled_strains),
                 pl.lit(True).alias("will_infected")
