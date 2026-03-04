@@ -62,36 +62,39 @@ def create_vaccine_antibody_df(vaccines, strains):
 
     
 def waning_ratio(vaccine_type, day, final_vaccine_time,
-                 waning_halflife_day_adult, waning_halflife_day_child,age):
+                 waning_halflife_day_adult, waning_halflife_day_child, age):
     """
-    Parameters
-    ----------
-    vaccine_type = possibly_infected["vaccines"].struct.field("vaccine_type")
-    day = day
-    final_vaccine_time = (possibly_infected["vaccines"]
-                          .struct.field("final_vaccine_time"))
-    waning_halflife_day_adult = self.waning_halflife_day_adult
-  
-    waning_halflife_day_child = self.waning_halflife_day_child
-    age = possibly_infected["age"]
-    
+    Return the multiplicative waning factor applied to vaccine-induced
+    antibody levels.
 
+    ``waning_halflife_day_adult`` and ``waning_halflife_day_child`` are
+    model parameters specifying the decay halflife used for adults (age >= 18)
+    and children respectively.  The formula matches the original Fortran model
+    and results in a value between 0 and 1 when halflife inputs are positive.
+
+    This implementation prefers :mod:`numpy` over :mod:`polars` so that it can
+    gracefully handle a variety of input types (scalars, NumPy arrays,
+    Polars/Spark-like series, etc.).  All inputs are converted to NumPy arrays
+    using ``np.asarray``; the function always returns a NumPy array.  Callers
+    in the simulation pipeline expect an array-like result and perform further
+    NumPy arithmetic on the output.
     """
-       
-    halflife = pl.DataFrame([
-        vaccine_type,
-        final_vaccine_time, age])
-    halflife = halflife.with_columns(
-        
-        pl.when(
-            pl.col("age") >= 18)
-        .then(np.log(0.5)/waning_halflife_day_adult)
-        .otherwise(np.log(0.5)/waning_halflife_day_child).alias("daily_decay")
-        ).with_columns(
-            np.exp(pl.col("daily_decay") * (day - pl.col("final_vaccine_time"))).alias("waning_ratio")
-            )
-            
-    return halflife["waning_ratio"]
+    # coerce inputs to numpy arrays; np.asarray works with scalars, lists,
+    # Polars Series, etc.
+    vaccine_type = np.asarray(vaccine_type)
+    day = np.asarray(day)
+    final_vaccine_time = np.asarray(final_vaccine_time)
+    age = np.asarray(age)
+
+    # compute age-dependent decay rate
+    daily_decay = np.where(
+        age >= 18,
+        np.log(0.5) / waning_halflife_day_adult,
+        np.log(0.5) / waning_halflife_day_child,
+    )
+
+    waning = np.exp(daily_decay * (day - final_vaccine_time))
+    return waning
             
 if __name__ == '__main__':
     import sys,os

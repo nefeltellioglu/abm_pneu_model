@@ -17,7 +17,7 @@ import numpy as np
 import polars as pl
 import tables as tb
 from scipy.stats import lognorm
-
+from collections import defaultdict
 # Local
 from .antibody_levels import create_vaccine_antibody_df, waning_ratio
 from .disease_utils import looks_like_json_list
@@ -1095,12 +1095,27 @@ class Disease:
             u = self.transmission_rng.random(n_selected)
 
             # sample strain based on contact-weighted distribution for that individual's age group
-            age_groups = selected["age_group"].to_list()
-            idx = np.empty(n_selected, dtype=int)
-            for i, (ag, ui) in enumerate(zip(age_groups, u)):
-                # fall back to global distribution if age group has no contacts
+            # Fully vectorized: group by CDF object, not age_group (reduces iterations to ~2-3)
+            age_groups_arr = selected["age_group"].to_numpy()
+            
+            # Map age groups to their CDFs; group by CDF object identity to batch searchsorted calls
+            cdf_to_row_indices = defaultdict(list)
+            
+            for i, ag in enumerate(age_groups_arr):
                 cdf = self._age_group_strain_cdfs.get(ag, self._strain_cdf)
-                idx[i] = np.searchsorted(cdf, ui, side="right")
+                cdf_id = id(cdf)  # Use object identity to detect when multiple age groups share same CDF
+                cdf_to_row_indices[cdf_id].append((i, cdf))
+            
+            idx = np.empty(n_selected, dtype=int)
+            
+            # Apply searchsorted grouped by CDF (typical: 1-2 groups since most share global CDF)
+            for cdf_id, rows_and_cdf in cdf_to_row_indices.items():
+                row_indices = np.array([x[0] for x in rows_and_cdf])
+                cdf = rows_and_cdf[0][1]
+                
+                # Vectorized searchsorted: apply once to all rows with this CDF
+                idx[row_indices] = np.searchsorted(cdf, u[row_indices], side="right")
+            
             sampled_strains = self._age_strains[idx]
 
             selected = selected.with_columns(

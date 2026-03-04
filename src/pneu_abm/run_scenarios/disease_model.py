@@ -29,6 +29,9 @@ from pneu_abm.model.disease.contact_matrix import ContactMatrix
 from pneu_abm.model.disease.run import go_single
 
 
+from pathlib import Path
+
+
 import pandas as pd
 #import numpy as np
 #np.set_printoptions(threshold=sys.maxsize)
@@ -78,18 +81,28 @@ from pathlib import Path
 #go_single(cur_params, DiseaseModel, KnownContactMatrix(givenmatrix = knowncmatrix), 
 #                      cur_params['seed'], verbose=True)
 
-def new_go_single(parameters):
+def make_contact_matrix(parameters):
+    """Return a ContactMatrix instance built from the parameter set.
+
+    This mirrors the logic used in ``new_go_single`` and is exposed so that
+    other modules (e.g. interactive plotting utilities) can obtain the same
+    contact matrix without duplicating file‑reading code.
+
+    Args:
+        parameters (dict): scenario parameter dictionary containing at least
+            ``cmatrix`` (relative path) and ``age_classes``.
+    """
     data_dir = Path('src/pneu_abm/data')
     if not data_dir.exists():
-        print(os.getcwd())
         raise ValueError('data directory is missing')
 
-    Australia_cmatrix = pd.read_csv(
-        f'{data_dir}/{parameters["cmatrix"]}',
-        header=None).to_numpy()
-    
-    go_single(parameters, DiseaseModel, 
-              ContactMatrix(givenmatrix = Australia_cmatrix,
-                            age_classes = parameters['age_classes'])
-                            )
+    cm_array = pd.read_csv(f'{data_dir}/{parameters["cmatrix"]}',
+                           header=None).to_numpy()
+    return ContactMatrix(givenmatrix=cm_array,
+                         age_classes=parameters['age_classes'])
+
+
+def new_go_single(parameters):
+    cmatrix = make_contact_matrix(parameters)
+    go_single(parameters, DiseaseModel, cmatrix)
 

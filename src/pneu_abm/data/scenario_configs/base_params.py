@@ -30,7 +30,7 @@ p = {
     'age_specific_prot_parameters': \
         'disease/age_specific_prot_parameters.csv',
 
-    'transmission_coefficient': 0.058, #per week #0.00825, #per day #### 
+    'transmission_coefficient': 0.059, #per week #0.00825, #per day #### 
     'reduction_in_susceptibility_coinfections': 0.8, #
     'max_no_coinfections': 2,
     'external_exposure_prob': 0.0006,#per week

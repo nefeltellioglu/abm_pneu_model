@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------------
     # NOTE: `p` is a mutable dict imported from base params; edits here mutate it.
     # Output directories/prefix (relative to repo root)
-    p["prefix"] = "src/pneu_abm/output/historical_run"
+    p["prefix"] = "src/pneu_abm/output/historical_run1"
     p["pop_prefix"] = p["prefix"]  # where population checkpoints are saved/read
     p["epi_prefix"] = p["prefix"]  # where epidemiology inputs are kept
     p["overwrite"] = True  # overwrite existing outputs at the same prefix
