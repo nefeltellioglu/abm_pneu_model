@@ -63,9 +63,10 @@ source venv/bin/activate
 pip install -e .
 ```
 
+## Manuscript
 
-## A simple example
+The manuscript that explains the model in more detail is available as a preprint: [Tellioglu et al.](https://www.medrxiv.org/content/10.1101/2025.05.22.25327965v4). 
 
+## Code guide
 
-
-## Code structure
+The background for the pathogen burden, need for a novel ABM model, structure of the repository and how to run example scenarios are all described in [introduction.ipynb](code/src/code_guide/introduction.ipynb) Notebook.

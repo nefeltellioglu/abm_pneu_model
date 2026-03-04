@@ -6,6 +6,6 @@ output/*
 output/**
 **/__pycache__
 */__pycache__
-data/
 data/saved_checkpoints/
-data/*
+src/*
+Src/
