@@ -6,6 +6,7 @@ output/*
 output/**
 **/__pycache__
 */__pycache__
-data/saved_checkpoints/
+data/saved_checkpoints/*
+!data/saved_checkpoints/.gitkeep
 src/*
 Src/
