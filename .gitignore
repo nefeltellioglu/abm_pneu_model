@@ -7,3 +7,8 @@ src/pneu_abm/output/**
 **/__pycache__
 */__pycache__
 src/pneu_abm/data/saved_checkpoints/
+
+# main-branch layout folders (not used on v2)
+/code/
+/data/
+/output/
