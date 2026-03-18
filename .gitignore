@@ -9,4 +9,6 @@ output/**
 data/saved_checkpoints/*
 !data/saved_checkpoints/.gitkeep
 src/*
-Src/
+
+# v2-branch layout folder (not used on main)
+/src/
