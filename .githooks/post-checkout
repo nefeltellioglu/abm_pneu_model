@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || exit 0)
+cd "$repo_root"
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+
+if [[ "$branch" == "v2" ]]; then
+  rm -f code/.DS_Store
+  rmdir code 2>/dev/null || true
+elif [[ "$branch" == "main" ]]; then
+  rm -f src/pneu_abm/.DS_Store
+  rmdir src/pneu_abm 2>/dev/null || true
+  rmdir src 2>/dev/null || true
+fi
