@@ -47,8 +47,7 @@ if __name__ == "__main__":
     p1 = p.copy()
      
     sweep_params = [
-        {'name': 'vaccine_list', 'values': ["vaccine_configs/vaccine_list.csv",
-                                            "vaccine_configs/examplar_all_vaccine_list.csv"]},]
+        {'name': 'vaccine_list', 'values': ["vaccine_configs/vaccine_list.csv"]},]
     
     # generate parameter combinations (converting iterator to list)
     param_combos = list(ParamComboIt(p, sweep_params))
